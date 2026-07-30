@@ -9,7 +9,14 @@ morseflow/<site>/<room>/<board_id>
 Example:
 
 ```text
-morseflow/demo/lab/mb-001/status
+morseflow/prodigy/cmcm/mb-001/status
+```
+
+For the first MorseFlow room, **The Curse of Mount Clifton Manor** (`CMCM`),
+use `cmcm` as the suggested room slug:
+
+```text
+morseflow/<site>/cmcm/<board_id>
 ```
 
 ## Board Status
@@ -59,4 +66,3 @@ Play DFPlayer track 7:
 ```json
 {"play_track": 7}
 ```
-

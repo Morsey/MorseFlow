@@ -1,5 +1,5 @@
-SITE = "demo"
-ROOM = "lab"
+SITE = "prodigy"
+ROOM = "cmcm"
 BOARD_ID = "mb-001"
 
 DEBUG_REPL = True

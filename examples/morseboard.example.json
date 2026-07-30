@@ -1,6 +1,6 @@
 {
-  "site": "demo",
-  "room": "lab",
+  "site": "prodigy",
+  "room": "cmcm",
   "board_id": "mb-001",
   "mqtt": {
     "host": "192.168.10.10",
@@ -24,4 +24,3 @@
     "port_signals_high": false
   }
 }
-

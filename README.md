@@ -12,6 +12,15 @@ to Morseboard controller boards.
 - `examples/` - sample configuration files and MQTT payloads.
 - `node-red/flows/` - starter Node-RED flow examples.
 
+## First Room
+
+The first MorseFlow room is **The Curse of Mount Clifton Manor**, abbreviated
+`CMCM`. The suggested MQTT room slug is `cmcm`.
+
+CMCM is the concrete implementation target for now. See `docs/cmcm/` for the
+living board, prop, MQTT, and test-plan notes. Production Node-RED flows are not
+stored in this repository.
+
 ## Hardware Summary
 
 - Morseboards use WIZnet W5500-EVB-Pico or W5500-EVB-Pico2 boards.
@@ -31,3 +40,13 @@ around non-blocking state-machine updates using `time.ticks_ms()`. It includes
 safe IO defaults, timed prop pulses, MQTT reconnect hooks, status publishing,
 and simple DFPlayer command support.
 
+## AI Assistance
+
+MorseFlow has been developed with assistance from OpenAI Codex. See
+`docs/ai-assistance.md` for details.
+
+## License
+
+This project is source-available for non-commercial use only. Commercial copying
+or commercial use of the code is not permitted without prior written permission.
+See `LICENSE.md`.
