@@ -2,11 +2,22 @@ SITE = "demo"
 ROOM = "lab"
 BOARD_ID = "mb-001"
 
+DEBUG_REPL = True
+DEBUG_BUFFER_SIZE = 50
+
+# Raspberry Pi Pico-class boards expose USB VBUS sense on GPIO24.
+# If USB is connected and AUTO_RUN_WITH_USB_CONNECTED is False, boot.py leaves
+# the firmware stopped at the REPL for development and recovery.
+USB_VBUS_DETECT_PIN = 24
+AUTO_RUN_WITH_USB_CONNECTED = False
+
 MQTT_HOST = "192.168.10.10"
 MQTT_PORT = 1883
 MQTT_USERNAME = None
 MQTT_PASSWORD = None
 MQTT_KEEPALIVE_SECONDS = 30
+MQTT_ENABLED = True
+MQTT_QOS = 1
 
 TOPIC_ROOT = "morseflow/{}/{}/{}".format(SITE, ROOM, BOARD_ID)
 
@@ -20,8 +31,8 @@ STATIC_DNS = "192.168.10.1"
 
 RECONNECT_INTERVAL_MS = 5000
 STATUS_INTERVAL_MS = 30000
+APP_LOOP_ERROR_BACKOFF_MS = 1000
 
 PROP_5V_ENABLED_AT_BOOT = False
 RELAY_ENABLED_AT_BOOT = False
 PORT_SIGNALS_HIGH_AT_BOOT = False
-

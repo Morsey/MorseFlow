@@ -1,8 +1,9 @@
 from time import ticks_add, ticks_diff
 
-from umqtt.simple import MQTTClient
+from mqtt_client import MQTTClient
 
 import config
+from debug import log
 import messages
 
 
@@ -17,7 +18,14 @@ class MQTTService:
         self.topic_root = config.TOPIC_ROOT
 
     def update(self, now_ms, network_connected, ip_address=None):
+        if not config.MQTT_ENABLED:
+            if self.connected:
+                self.connected = False
+            return
+
         if not network_connected:
+            if self.connected:
+                log("mqtt", "network disconnected")
             self.connected = False
             return
 
@@ -35,30 +43,40 @@ class MQTTService:
                 self.next_status_ms = ticks_add(now_ms, config.STATUS_INTERVAL_MS)
         except Exception as exc:
             self.last_error = repr(exc)
+            log("mqtt", "connection lost: {}".format(self.last_error))
             self.connected = False
 
     def publish_status(self, ip_address=None):
         if not self.connected:
             return
-        self.client.publish(
-            self._topic("status"),
-            messages.online_status(config.BOARD_ID, ip_address),
-            retain=True,
-            qos=1,
-        )
+        try:
+            self.client.publish(
+                self._topic("status"),
+                messages.online_status(config.BOARD_ID, ip_address),
+                retain=True,
+                qos=config.MQTT_QOS,
+            )
+            log("mqtt", "published status")
+        except Exception as exc:
+            self._disconnect_after_error("publish status failed", exc)
 
     def publish_state(self):
         if not self.connected:
             return
-        self.client.publish(
-            self._topic("state"),
-            messages.state_payload(config.BOARD_ID, self.hardware.state()),
-            retain=True,
-            qos=1,
-        )
+        try:
+            self.client.publish(
+                self._topic("state"),
+                messages.state_payload(config.BOARD_ID, self.hardware.state()),
+                retain=True,
+                qos=config.MQTT_QOS,
+            )
+            log("mqtt", "published state")
+        except Exception as exc:
+            self._disconnect_after_error("publish state failed", exc)
 
     def _connect(self, ip_address):
         try:
+            log("mqtt", "connecting to {}:{}".format(config.MQTT_HOST, config.MQTT_PORT))
             client_id = config.BOARD_ID
             self.client = MQTTClient(
                 client_id,
@@ -72,7 +90,7 @@ class MQTTService:
                 self._topic("status"),
                 messages.offline_status(config.BOARD_ID),
                 retain=True,
-                qos=1,
+                qos=config.MQTT_QOS,
             )
             self.client.set_callback(self._on_message)
             self.client.connect(clean_session=True)
@@ -81,9 +99,12 @@ class MQTTService:
             self.last_error = None
             self.publish_status(ip_address)
             self.publish_state()
+            if self.connected:
+                log("mqtt", "connected and subscribed")
         except Exception as exc:
             self.last_error = repr(exc)
             self.connected = False
+            log("mqtt", "connect failed: {}".format(self.last_error))
             try:
                 if self.client:
                     self.client.disconnect()
@@ -91,13 +112,15 @@ class MQTTService:
                 pass
 
     def _subscribe_commands(self):
-        self.client.subscribe(self._topic("cmd/#"), qos=1)
+        self.client.subscribe(self._topic("cmd/#"), qos=config.MQTT_QOS)
+        log("mqtt", "subscribed {}".format(self._topic("cmd/#")))
 
     def _on_message(self, topic, payload):
         now_ms = _ticks_ms()
         topic = _to_text(topic)
         command = messages.decode_payload(payload)
         suffix = topic[len(self.topic_root) + 1:]
+        log("mqtt", "received {} {}".format(suffix, command))
 
         if suffix == "cmd/power":
             self.hardware.set_power(bool(command.get("enabled")))
@@ -114,6 +137,16 @@ class MQTTService:
 
     def _topic(self, suffix):
         return "{}/{}".format(self.topic_root, suffix)
+
+    def _disconnect_after_error(self, context, exc):
+        self.last_error = repr(exc)
+        log("mqtt", "{}: {}".format(context, self.last_error))
+        self.connected = False
+        try:
+            if self.client:
+                self.client.disconnect()
+        except Exception:
+            pass
 
 
 def _to_text(value):

@@ -7,10 +7,13 @@ It assumes a W5500-enabled firmware build for the specific WIZnet board.
 
 Main modules:
 
-- `main.py` - runtime entrypoint and service loop.
+- `boot.py` - keeps the default USB serial REPL available and conditionally starts the app.
+- `app.py` - runtime entrypoint and service loop.
 - `config.py` - board identity, MQTT settings, and static network options.
+- `debug.py` - small REPL logging helper controlled by `DEBUG_REPL`.
 - `pins.py` - pin assignments for W5500, DFPlayer, prop power, relay, and ports.
 - `hardware.py` - local IO abstractions and safe defaults.
+- `mqtt_client.py` - bundled lightweight MQTT client.
 - `mqtt_service.py` - MQTT connection, subscriptions, LWT, reconnect, and dispatch.
 - `messages.py` - JSON command parsing and response payload helpers.
 
@@ -19,9 +22,82 @@ Main modules:
 - Do not use blocking sleeps for prop actions.
 - Use `time.ticks_ms()` and `time.ticks_diff()` for scheduling.
 - Each subsystem exposes an `update(now_ms)` method.
-- The main loop calls subsystem updates frequently.
+- The app loop calls subsystem updates frequently.
 - MQTT reconnect attempts are rate-limited and retried forever.
 
 Short loop idling is acceptable to avoid a tight CPU spin, but prop timing
 must not depend on `sleep()` calls.
 
+## USB REPL Access
+
+Morseboard firmware must remain accessible through the Pico USB serial REPL
+when connected by USB. The project does not disable MicroPython's default REPL
+and does not redirect it to UART0, because UART0 is used by the DFPlayer Mini
+on GPIO0/GPIO1.
+
+`firmware/morseboard/boot.py` enables Ctrl-C interruption with
+`micropython.kbd_intr(3)`. The app firmware loop also calls `machine.idle()`
+each pass so the runtime stays cooperative during development and recovery.
+
+The Morseboard runtime is named `app.py`, not `main.py`. This is intentional:
+MicroPython auto-runs `main.py` after `boot.py`, which would start the room
+controller even when the board is plugged into USB for REPL access.
+
+For development, use VS Code MicroPico Run on `app.py`. `app.py` includes a
+guarded entry point so it starts when run directly, but does not start merely
+because `boot.py` imports it.
+
+`boot.py` uses `USB_VBUS_DETECT_PIN` from `config.py` to decide whether USB is
+connected. The default is GPIO24, the Pico-class VBUS sense pin. If USB is
+connected and `AUTO_RUN_WITH_USB_CONNECTED` is `False`, `boot.py` leaves the
+board at the REPL and prints:
+
+```python
+import app
+app.main()
+```
+
+as the manual start command. If USB is not connected, `boot.py` starts
+`app.main()` automatically.
+
+The USB check is based on VBUS power presence, not whether a serial terminal is
+open. A USB charger or USB power bank will also count as USB connected.
+
+## REPL Debug Output
+
+Firmware modules log useful boot, network, MQTT, hardware, audio, and prop-port
+events to the USB REPL through `debug.py`. Set `DEBUG_REPL = False` in
+`config.py` to silence this output for production boards.
+
+Logs are plain MicroPython stdout. They are visible live only when the REPL is
+attached at the moment the log line is printed. Because boot messages can happen
+before VS Code opens the REPL, `debug.py` also keeps a small in-memory buffer.
+
+From the REPL:
+
+```python
+import debug
+debug.dump()
+```
+
+Use `debug.clear()` to clear the buffer. The buffer length is controlled by
+`DEBUG_BUFFER_SIZE` in `config.py`.
+
+If the REPL shows `wiznet5k_send_ethernet: fatal error -5`, the W5500 driver is
+reporting a network send failure. Check the wired Ethernet link, broker IP, and
+broker availability. For USB bench testing without MQTT traffic, set
+`MQTT_ENABLED = False` in `config.py`.
+
+MQTT startup is gated on a valid Ethernet IP address. The W5500 interface can
+report a link-like connected state before DHCP has completed, so the firmware
+waits until `ifconfig()[0]` is not `0.0.0.0` before connecting to the broker.
+
+## Bundled MQTT Client
+
+Some W5500-enabled MicroPython builds do not include `umqtt.simple`. MorseFlow
+therefore bundles a local `firmware/morseboard/mqtt_client.py` module and
+imports it directly from `mqtt_service.py`.
+
+This avoids nested package upload issues in VS Code MicroPico. Copy
+`mqtt_client.py` to the board at the same filesystem level as `app.py`,
+`config.py`, and `mqtt_service.py`.

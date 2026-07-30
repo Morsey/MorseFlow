@@ -3,6 +3,7 @@ from time import ticks_add, ticks_diff
 import network
 
 import config
+from debug import log
 import pins
 
 
@@ -13,8 +14,13 @@ class EthernetService:
         self.last_error = None
 
     def update(self, now_ms):
-        if self.is_connected():
+        if self.is_ready():
             return True
+        if self.is_connected():
+            if ticks_diff(now_ms, self.next_attempt_ms) >= 0:
+                self.next_attempt_ms = ticks_add(now_ms, config.RECONNECT_INTERVAL_MS)
+                log("ethernet", "link active; waiting for valid IP")
+            return False
         if ticks_diff(now_ms, self.next_attempt_ms) < 0:
             return False
         self.next_attempt_ms = ticks_add(now_ms, config.RECONNECT_INTERVAL_MS)
@@ -22,6 +28,7 @@ class EthernetService:
 
     def connect(self):
         try:
+            log("ethernet", "connecting W5500")
             spi = SPI(
                 0,
                 2_000_000,
@@ -43,9 +50,14 @@ class EthernetService:
                     config.STATIC_DNS,
                 ))
             self.last_error = None
-            return self.nic.isconnected()
+            if self.is_ready():
+                log("ethernet", "connected with IP {}".format(self.ip_address()))
+            else:
+                log("ethernet", "interface active; waiting for valid IP")
+            return self.is_ready()
         except Exception as exc:
             self.last_error = repr(exc)
+            log("ethernet", "connect failed: {}".format(self.last_error))
             return False
 
     def is_connected(self):
@@ -54,7 +66,14 @@ class EthernetService:
         except Exception:
             return False
 
+    def is_ready(self):
+        ip_address = self.ip_address()
+        return self.is_connected() and ip_address not in (None, "0.0.0.0")
+
     def ip_address(self):
-        if not self.is_connected():
+        if self.nic is None:
             return None
-        return self.nic.ifconfig()[0]
+        try:
+            return self.nic.ifconfig()[0]
+        except Exception:
+            return None

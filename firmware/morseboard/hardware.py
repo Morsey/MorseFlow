@@ -2,6 +2,7 @@ from machine import Pin
 from time import ticks_add, ticks_diff
 
 import config
+from debug import log
 import pins
 from dfplayer import DFPlayer
 
@@ -20,18 +21,22 @@ class PropPort:
     def set_a(self, enabled):
         self.a_deadline = None
         self.a.value(1 if enabled else 0)
+        log("port{}".format(self.port_number), "signal A set {}".format(int(bool(enabled))))
 
     def set_b(self, enabled):
         self.b_deadline = None
         self.b.value(1 if enabled else 0)
+        log("port{}".format(self.port_number), "signal B set {}".format(int(bool(enabled))))
 
     def pulse_a(self, now_ms, duration_ms):
         self.a.value(1)
         self.a_deadline = ticks_add(now_ms, max(0, int(duration_ms)))
+        log("port{}".format(self.port_number), "signal A pulse {} ms".format(duration_ms))
 
     def pulse_b(self, now_ms, duration_ms):
         self.b.value(1)
         self.b_deadline = ticks_add(now_ms, max(0, int(duration_ms)))
+        log("port{}".format(self.port_number), "signal B pulse {} ms".format(duration_ms))
 
     def update(self, now_ms):
         changed = False
@@ -78,10 +83,12 @@ class MorseboardHardware:
     def set_power(self, enabled):
         self.power_5v.value(1 if enabled else 0)
         self.dirty = True
+        log("hardware", "switched 5V set {}".format(int(bool(enabled))))
 
     def set_relay(self, enabled):
         self.relay.value(1 if enabled else 0)
         self.dirty = True
+        log("hardware", "relay set {}".format(int(bool(enabled))))
 
     def command_port(self, port_number, command, now_ms):
         port = self.ports[int(port_number) - 1]
@@ -90,6 +97,7 @@ class MorseboardHardware:
         self.dirty = True
 
     def command_audio(self, command):
+        log("audio", "command {}".format(command))
         if "volume" in command:
             self.dfplayer.set_volume(command["volume"])
         if "play_track" in command:
@@ -144,4 +152,3 @@ class MorseboardHardware:
             port.set_a(bool(value))
         else:
             port.set_b(bool(value))
-
