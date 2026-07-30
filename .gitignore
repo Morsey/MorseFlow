@@ -1,0 +1,11 @@
+# Local Python artifacts
+__pycache__/
+*.py[cod]
+
+# MicroPico/local editor state
+.micropico.secret
+
+# Logs and generated exports
+*.log
+*.bak
+

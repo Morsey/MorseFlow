@@ -1,0 +1,24 @@
+DFPLAYER_TX = 0
+DFPLAYER_RX = 1
+
+PROP_POWER_ENABLE = 15
+OPTIONAL_RELAY = 22
+
+W5500_MISO = 16
+W5500_CS = 17
+W5500_SCK = 18
+W5500_MOSI = 19
+W5500_RESET = 20
+W5500_INT = 21
+
+PORT_PINS = (
+    (2, 3),
+    (4, 5),
+    (6, 7),
+    (8, 9),
+    (10, 11),
+    (12, 26),
+    (13, 27),
+    (14, 28),
+)
+

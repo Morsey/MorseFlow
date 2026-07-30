@@ -1,0 +1,107 @@
+[
+  {
+    "id": "morseflow-tab",
+    "type": "tab",
+    "label": "MorseFlow Starter",
+    "disabled": false,
+    "info": "Starter flow for MorseFlow MQTT board status and commands."
+  },
+  {
+    "id": "mqtt-broker-local",
+    "type": "mqtt-broker",
+    "name": "Local MQTT",
+    "broker": "127.0.0.1",
+    "port": "1883",
+    "clientid": "node-red-morseflow",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": ""
+  },
+  {
+    "id": "mb-status-in",
+    "type": "mqtt in",
+    "z": "morseflow-tab",
+    "name": "MB status",
+    "topic": "morseflow/+/+/+/status",
+    "qos": "1",
+    "datatype": "json",
+    "broker": "mqtt-broker-local",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 140,
+    "y": 80,
+    "wires": [["status-debug"]]
+  },
+  {
+    "id": "status-debug",
+    "type": "debug",
+    "z": "morseflow-tab",
+    "name": "status debug",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 360,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "inject-port1-pulse",
+    "type": "inject",
+    "z": "morseflow-tab",
+    "name": "Pulse MB-001 port 1 A",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "morseflow/demo/lab/mb-001/cmd/port/1",
+    "payload": "{\"a\":{\"pulse_ms\":500}}",
+    "payloadType": "json",
+    "x": 160,
+    "y": 160,
+    "wires": [["mb-command-out"]]
+  },
+  {
+    "id": "mb-command-out",
+    "type": "mqtt out",
+    "z": "morseflow-tab",
+    "name": "MB command",
+    "topic": "",
+    "qos": "1",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt-broker-local",
+    "x": 410,
+    "y": 160,
+    "wires": []
+  }
+]
+
