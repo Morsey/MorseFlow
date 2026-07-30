@@ -21,11 +21,30 @@ def main():
     # Cooperative service loop: each subsystem advances its own state machine.
     # Keep this loop free of blocking sleeps so MQTT and timed outputs stay live.
     next_error_log_ms = 0
+    next_network_wait_log_ms = 0
+    was_network_ready = False
     while True:
         now_ms = ticks_ms()
         try:
             ethernet.update(now_ms)
-            mqtt.update(now_ms, ethernet.is_ready(), ethernet.ip_address())
+            network_ready = ethernet.is_ready()
+
+            if network_ready:
+                if not was_network_ready:
+                    log("app", "network connected with IP {}".format(ethernet.ip_address()))
+                was_network_ready = True
+                mqtt.update(now_ms, True, ethernet.ip_address())
+            else:
+                if was_network_ready:
+                    log("app", "network disconnected; MQTT stopped")
+                was_network_ready = False
+                if ticks_diff(now_ms, next_network_wait_log_ms) >= 0:
+                    log("app", "network not ready; MQTT not started")
+                    next_network_wait_log_ms = ticks_add(
+                        now_ms,
+                        config.NETWORK_WAIT_LOG_INTERVAL_MS,
+                    )
+
             hardware.update(now_ms)
 
             if hardware.consume_dirty():

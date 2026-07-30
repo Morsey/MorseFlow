@@ -50,6 +50,8 @@ needing nested folder support.
 - Uses state-machine updates for timed prop pulses.
 - Retries Ethernet and MQTT reconnects indefinitely.
 - Waits for a valid Ethernet IP before starting MQTT.
+- Does not enter the MQTT service until the network is ready.
+- Reports network connect/disconnect transitions to the REPL log.
 - Uses MQTT Last Will and Testament for offline detection.
 - Publishes retained status/state after MQTT reconnect.
 - Prints debug/status messages to the USB REPL when `DEBUG_REPL` is enabled.

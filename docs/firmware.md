@@ -91,6 +91,11 @@ broker availability. For USB bench testing without MQTT traffic, set
 MQTT startup is gated on a valid Ethernet IP address. The W5500 interface can
 report a link-like connected state before DHCP has completed, so the firmware
 waits until `ifconfig()[0]` is not `0.0.0.0` before connecting to the broker.
+The app loop does not call into the MQTT service at all until this network-ready
+condition is true.
+
+When that condition changes, the app logs the transition. On successful network
+connection, it reports the assigned IP address to the REPL log.
 
 ## Bundled MQTT Client
 
