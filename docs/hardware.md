@@ -18,6 +18,9 @@
 GPIO16-GPIO21 are reserved for W5500 Ethernet and must not be used by props.
 Onboard buttons are not used.
 
+Switched 5V prop power is normally enabled at Morseboard boot. The MQTT power
+command is primarily for resetting or recovering attached PIBs.
+
 ## Prop Ports
 
 Each Morseboard has eight RJ45 prop ports. Each cable carries:
@@ -54,4 +57,3 @@ status outputs:
 - Incorrect card present.
 
 Serial RFID PIB mode should be used only when Node-RED needs the actual card ID.
-

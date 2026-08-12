@@ -11,8 +11,11 @@ from mqtt_service import MQTTService
 
 def main():
     log("app", "starting MorseFlow Morseboard runtime")
+    log("app", "creating hardware")
     hardware = MorseboardHardware()
+    log("app", "creating ethernet service")
     ethernet = EthernetService()
+    log("app", "creating MQTT service")
     mqtt = MQTTService(hardware)
 
     hardware.safe_defaults()
@@ -46,6 +49,9 @@ def main():
                     )
 
             hardware.update(now_ms)
+
+            for event_type, event_data in hardware.consume_events():
+                mqtt.publish_event(event_type, event_data)
 
             if hardware.consume_dirty():
                 mqtt.publish_state()

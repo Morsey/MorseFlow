@@ -19,7 +19,12 @@ class EthernetService:
         if self.is_connected():
             if ticks_diff(now_ms, self.next_attempt_ms) >= 0:
                 self.next_attempt_ms = ticks_add(now_ms, config.RECONNECT_INTERVAL_MS)
-                log("ethernet", "link active; waiting for valid IP")
+                log(
+                    "ethernet",
+                    "link active; waiting for valid IP; ifconfig={}".format(
+                        self.ifconfig()
+                    ),
+                )
             return False
         if ticks_diff(now_ms, self.next_attempt_ms) < 0:
             return False
@@ -29,20 +34,11 @@ class EthernetService:
     def connect(self):
         try:
             log("ethernet", "connecting W5500")
-            spi = SPI(
-                0,
-                2_000_000,
-                mosi=Pin(pins.W5500_MOSI),
-                miso=Pin(pins.W5500_MISO),
-                sck=Pin(pins.W5500_SCK),
-            )
-            self.nic = network.WIZNET5K(
-                spi,
-                Pin(pins.W5500_CS),
-                Pin(pins.W5500_RESET),
-            )
+            self.nic = self._create_interface()
             self.nic.active(True)
-            if not config.NETWORK_DHCP:
+            if config.NETWORK_DHCP and hasattr(network, "WIZNET6K"):
+                self.nic.ifconfig("dhcp")
+            elif not config.NETWORK_DHCP:
                 self.nic.ifconfig((
                     config.STATIC_IP,
                     config.STATIC_SUBNET,
@@ -53,12 +49,39 @@ class EthernetService:
             if self.is_ready():
                 log("ethernet", "connected with IP {}".format(self.ip_address()))
             else:
-                log("ethernet", "interface active; waiting for valid IP")
+                log(
+                    "ethernet",
+                    "interface active; waiting for valid IP; ifconfig={}".format(
+                        self.ifconfig()
+                    ),
+                )
             return self.is_ready()
         except Exception as exc:
             self.last_error = repr(exc)
             log("ethernet", "connect failed: {}".format(self.last_error))
             return False
+
+    def _create_interface(self):
+        if hasattr(network, "WIZNET6K"):
+            log("ethernet", "using network.WIZNET6K")
+            return network.WIZNET6K()
+
+        if hasattr(network, "WIZNET5K"):
+            log("ethernet", "using network.WIZNET5K")
+            spi = SPI(
+                0,
+                2_000_000,
+                mosi=Pin(pins.W5500_MOSI),
+                miso=Pin(pins.W5500_MISO),
+                sck=Pin(pins.W5500_SCK),
+            )
+            return network.WIZNET5K(
+                spi,
+                Pin(pins.W5500_CS),
+                Pin(pins.W5500_RESET),
+            )
+
+        raise RuntimeError("MicroPython firmware does not include WIZnet Ethernet support")
 
     def is_connected(self):
         try:
@@ -77,3 +100,11 @@ class EthernetService:
             return self.nic.ifconfig()[0]
         except Exception:
             return None
+
+    def ifconfig(self):
+        if self.nic is None:
+            return None
+        try:
+            return self.nic.ifconfig()
+        except Exception as exc:
+            return repr(exc)

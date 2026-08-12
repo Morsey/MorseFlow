@@ -74,9 +74,31 @@ class MQTTService:
         except Exception as exc:
             self._disconnect_after_error("publish state failed", exc)
 
+    def publish_event(self, event_type, data):
+        if not self.connected:
+            return
+        try:
+            self.client.publish(
+                self._topic("event"),
+                messages.event_payload(config.BOARD_ID, event_type, data),
+                retain=False,
+                qos=config.MQTT_QOS,
+            )
+            log("mqtt", "published event {}".format(event_type))
+        except Exception as exc:
+            self._disconnect_after_error("publish event failed", exc)
+
     def _connect(self, ip_address):
         try:
-            log("mqtt", "connecting to {}:{}".format(config.MQTT_HOST, config.MQTT_PORT))
+            log(
+                "mqtt",
+                "connecting client_id={} from ip={} to {}:{}".format(
+                    config.BOARD_ID,
+                    ip_address,
+                    config.MQTT_HOST,
+                    config.MQTT_PORT,
+                ),
+            )
             client_id = config.BOARD_ID
             self.client = MQTTClient(
                 client_id,

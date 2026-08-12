@@ -28,7 +28,7 @@ stored in this repository.
 - No Wi-Fi.
 - W5500 Ethernet pins are reserved: GPIO16-GPIO21.
 - DFPlayer Mini: GPIO0 to DFPlayer RX, GPIO1 to DFPlayer TX.
-- GPIO15 controls switched 5V prop power.
+- GPIO15 controls switched 5V prop power, normally enabled at boot and used for prop reset/recovery.
 - 12V prop power is always live.
 - GPIO22 may control an onboard relay when populated.
 - Eight RJ45 prop ports expose GND, switched 5V, always-live 12V, Signal A, and Signal B.

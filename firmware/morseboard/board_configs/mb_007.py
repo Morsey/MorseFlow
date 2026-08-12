@@ -1,0 +1,3 @@
+BOARD_ID = "mb-007"
+
+RFID_INPUT_PORTS = {}

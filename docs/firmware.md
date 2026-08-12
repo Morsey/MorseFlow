@@ -9,7 +9,9 @@ Main modules:
 
 - `boot.py` - keeps the default USB serial REPL available and conditionally starts the app.
 - `app.py` - runtime entrypoint and service loop.
-- `config.py` - board identity, MQTT settings, and static network options.
+- `config.py` - shared defaults and board-specific override loader.
+- `board_config.py` - active board identity, port roles, and per-board overrides.
+- `board_configs/` - stored per-board config files; copy one to `board_config.py` before upload.
 - `debug.py` - small REPL logging helper controlled by `DEBUG_REPL`.
 - `pins.py` - pin assignments for W5500, DFPlayer, prop power, relay, and ports.
 - `hardware.py` - local IO abstractions and safe defaults.
@@ -106,3 +108,32 @@ imports it directly from `mqtt_service.py`.
 This avoids nested package upload issues in VS Code MicroPico. Copy
 `mqtt_client.py` to the board at the same filesystem level as `app.py`,
 `config.py`, and `mqtt_service.py`.
+
+## Per-Board Config
+
+The shared Morseboard firmware should stay identical across physical boards.
+Only `board_config.py` should differ per board.
+
+Stored board configs live in:
+
+```text
+firmware/morseboard/board_configs/
+```
+
+To prepare a board, copy the chosen stored config to the active filename:
+
+```bash
+cp firmware/morseboard/board_configs/mb_001.py firmware/morseboard/board_config.py
+```
+
+Then upload the common firmware files plus `board_config.py` to the board. The
+runtime imports `board_config.py` from the board filesystem and applies any
+uppercase settings it defines, such as `BOARD_ID`, `MQTT_HOST`, static IP
+settings, or `RFID_INPUT_PORTS`.
+
+Use unique board IDs such as `mb-001`, `mb-002`, and `mb-003`. MQTT topics are
+then derived automatically:
+
+```text
+morseflow/<site>/<room>/<board_id>
+```

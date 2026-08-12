@@ -1,6 +1,7 @@
 # Local Python artifacts
 __pycache__/
 *.py[cod]
+.DS_Store
 
 # MicroPico/local editor state
 .micropico.secret
@@ -8,4 +9,3 @@ __pycache__/
 # Logs and generated exports
 *.log
 *.bak
-
