@@ -38,32 +38,19 @@ and does not redirect it to UART0, because UART0 is used by the DFPlayer Mini
 on GPIO0/GPIO1.
 
 `firmware/morseboard/boot.py` enables Ctrl-C interruption with
-`micropython.kbd_intr(3)`. The app firmware loop also calls `machine.idle()`
-each pass so the runtime stays cooperative during development and recovery.
+`micropython.kbd_intr(3)`. If the GPIO21 boot REPL button is held low during
+boot, `boot.py` skips `app.main()` and leaves the board at the USB REPL. The app
+firmware loop also calls `machine.idle()` each pass so the runtime stays
+cooperative during development and recovery.
 
-The Morseboard runtime is named `app.py`, not `main.py`. This is intentional:
-MicroPython auto-runs `main.py` after `boot.py`, which would start the room
-controller even when the board is plugged into USB for REPL access.
+The Morseboard runtime is named `app.py`, not `main.py`. When the GPIO21 boot
+REPL button is not held, `boot.py` imports `app` and starts `app.main()`. It
+does not try to detect USB power or whether a serial terminal is attached.
 
-For development, use VS Code MicroPico Run on `app.py`. `app.py` includes a
-guarded entry point so it starts when run directly, but does not start merely
-because `boot.py` imports it.
-
-`boot.py` uses `USB_VBUS_DETECT_PIN` from `config.py` to decide whether USB is
-connected. The default is GPIO24, the Pico-class VBUS sense pin. If USB is
-connected and `AUTO_RUN_WITH_USB_CONNECTED` is `False`, `boot.py` leaves the
-board at the REPL and prints:
-
-```python
-import app
-app.main()
-```
-
-as the manual start command. If USB is not connected, `boot.py` starts
-`app.main()` automatically.
-
-The USB check is based on VBUS power presence, not whether a serial terminal is
-open. A USB charger or USB power bank will also count as USB connected.
+For development, connect over the USB serial REPL and press Ctrl-C to interrupt
+the running app. For manual testing, VS Code MicroPico can still run `app.py`
+directly; the guarded entry point at the bottom of `app.py` starts `main()`
+only when the file is run directly.
 
 ## REPL Debug Output
 

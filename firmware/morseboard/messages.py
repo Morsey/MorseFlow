@@ -16,7 +16,7 @@ def encode_payload(payload):
     return json.dumps(payload)
 
 
-def online_status(board_id, ip_address=None):
+def online_status(board_id, ip_address=None, uptime_ms=None):
     payload = {
         "status": "online",
         "board_id": board_id,
@@ -24,6 +24,8 @@ def online_status(board_id, ip_address=None):
     }
     if ip_address:
         payload["ip"] = ip_address
+    if uptime_ms is not None:
+        payload["uptime_ms"] = uptime_ms
     return encode_payload(payload)
 
 
@@ -47,4 +49,3 @@ def event_payload(board_id, event_type, data):
         "event": event_type,
         "data": data,
     })
-

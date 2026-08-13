@@ -10,6 +10,7 @@ W5500_SCK = 18
 W5500_MOSI = 19
 W5500_RESET = 20
 W5500_INT = 21
+BOOT_REPL_BUTTON = 21
 
 PORT_PINS = (
     (2, 3),
@@ -21,4 +22,3 @@ PORT_PINS = (
     (13, 27),
     (14, 28),
 )
-

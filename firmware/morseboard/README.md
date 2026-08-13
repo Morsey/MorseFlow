@@ -28,10 +28,8 @@ Upload these files from this folder to the board filesystem:
 
 Edit `config.py` for the site, room, board ID, MQTT broker, and network mode.
 
-Do not upload a file named `main.py` for the Morseboard runtime. MicroPython
-auto-runs `main.py` after `boot.py`, which would bypass the USB development
-guard. MorseFlow uses `app.py` instead, and `boot.py` decides whether to start
-it.
+Do not upload a file named `main.py` for the Morseboard runtime. MorseFlow uses
+`app.py`, and `boot.py` imports it and starts `app.main()`.
 
 During development, open `app.py` in VS Code and use MicroPico Run. The guarded
 entry point at the bottom of `app.py` starts `main()` only when the file is run
@@ -66,19 +64,9 @@ device from VS Code MicroPico, Thonny, or another serial terminal. Do not
 redirect or disable `dupterm`, and do not move the REPL onto UART0 because
 UART0 is reserved for the DFPlayer Mini on GPIO0/GPIO1.
 
-`boot.py` reads `USB_VBUS_DETECT_PIN` from `config.py`; the default is GPIO24,
-the Pico-class VBUS sense pin. When USB is detected and
-`AUTO_RUN_WITH_USB_CONNECTED` is `False`, the controller app does not start
-automatically. Start it manually from the REPL with:
-
-```python
-import app
-app.main()
-```
-
-When USB is not detected, `boot.py` imports `app` and runs `app.main()`.
-This is a VBUS/power-present check, not a serial-terminal-open check. A USB
-charger or USB power bank will also look like USB is connected.
+`boot.py` does not detect USB power. It always imports `app` and starts
+`app.main()`. When a USB REPL is attached, press Ctrl-C to interrupt the running
+app and return to the REPL.
 
 Set `DEBUG_REPL = False` in `config.py` to silence MorseFlow debug output.
 

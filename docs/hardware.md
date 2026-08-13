@@ -12,11 +12,12 @@
 | W5500 SCK | GPIO18 |
 | W5500 MOSI | GPIO19 |
 | W5500 RESET | GPIO20 |
-| W5500 INT | GPIO21 |
+| W5500 INT / boot REPL button | GPIO21 |
 | Optional onboard relay | GPIO22 |
 
 GPIO16-GPIO21 are reserved for W5500 Ethernet and must not be used by props.
-Onboard buttons are not used.
+Hold the GPIO21 onboard button low during boot to skip app startup and leave the
+board sitting at the USB REPL for recovery.
 
 Switched 5V prop power is normally enabled at Morseboard boot. The MQTT power
 command is primarily for resetting or recovering attached PIBs.

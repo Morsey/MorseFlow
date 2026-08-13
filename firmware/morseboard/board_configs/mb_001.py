@@ -1,5 +1,16 @@
 BOARD_ID = "mb-001"
 
+CANDLE_PORTS = {
+    1: {
+        "prop": "candle_1",
+        "candle": 1,
+    },
+    2: {
+        "prop": "candle_2",
+        "candle": 2,
+    },
+}
+
 # MB1 RFID PIB wiring currently has Signal A = wrong card and Signal B = correct card.
 RFID_INPUT_PORTS = {
     3: {

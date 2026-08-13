@@ -14,3 +14,12 @@ RFID_INPUT_PORTS = {
     #     "wrong_signal": "a",
     # },
 }
+
+# Candle ports use Signal A as the candle LED output and Signal B as the
+# active-low IR detection input.
+CANDLE_PORTS = {
+    # 1: {
+    #     "prop": "candle_1",
+    #     "candle": 1,
+    # },
+}

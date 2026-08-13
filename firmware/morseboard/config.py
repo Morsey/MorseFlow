@@ -5,12 +5,6 @@ BOARD_ID = "mb-unconfigured"
 DEBUG_REPL = True
 DEBUG_BUFFER_SIZE = 50
 
-# Raspberry Pi Pico-class boards expose USB VBUS sense on GPIO24.
-# If USB is connected and AUTO_RUN_WITH_USB_CONNECTED is False, boot.py leaves
-# the firmware stopped at the REPL for development and recovery.
-USB_VBUS_DETECT_PIN = 24
-AUTO_RUN_WITH_USB_CONNECTED = False
-
 MQTT_HOST = "cmcm.local"
 MQTT_PORT = 1883
 MQTT_USERNAME = None
@@ -39,6 +33,11 @@ PORT_SIGNALS_HIGH_AT_BOOT = False
 # Per-board config can override any uppercase setting above.
 # For a deployed board, copy one file from board_configs/ to board_config.py.
 RFID_INPUT_PORTS = {}
+CANDLE_PORTS = {}
+DEMON_KNOCKER_PORTS = {}
+CANDLE_ON_TIME_MS = 3000
+CANDLE_SENSOR_TRIGGER_VALUE = 0
+DEMON_KNOCKER_PULSE_MS = 120
 
 
 def _load_board_config():

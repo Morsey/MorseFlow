@@ -12,12 +12,17 @@ class MQTTService:
         self.hardware = hardware
         self.client = None
         self.connected = False
+        self.start_ms = _ticks_ms()
+        self.last_uptime_sample_ms = self.start_ms
+        self.uptime_ms = 0
         self.next_attempt_ms = 0
         self.next_status_ms = 0
         self.last_error = None
         self.topic_root = config.TOPIC_ROOT
 
     def update(self, now_ms, network_connected, ip_address=None):
+        self._update_uptime(now_ms)
+
         if not config.MQTT_ENABLED:
             if self.connected:
                 self.connected = False
@@ -38,7 +43,7 @@ class MQTTService:
         try:
             self.client.check_msg()
             if ticks_diff(now_ms, self.next_status_ms) >= 0:
-                self.publish_status(ip_address)
+                self.publish_status(ip_address, now_ms)
                 self.publish_state()
                 self.next_status_ms = ticks_add(now_ms, config.STATUS_INTERVAL_MS)
         except Exception as exc:
@@ -46,13 +51,19 @@ class MQTTService:
             log("mqtt", "connection lost: {}".format(self.last_error))
             self.connected = False
 
-    def publish_status(self, ip_address=None):
+    def publish_status(self, ip_address=None, now_ms=None):
         if not self.connected:
             return
+        if now_ms is None:
+            now_ms = _ticks_ms()
         try:
             self.client.publish(
                 self._topic("status"),
-                messages.online_status(config.BOARD_ID, ip_address),
+                messages.online_status(
+                    config.BOARD_ID,
+                    ip_address,
+                    self._uptime_ms(now_ms),
+                ),
                 retain=True,
                 qos=config.MQTT_QOS,
             )
@@ -119,7 +130,7 @@ class MQTTService:
             self._subscribe_commands()
             self.connected = True
             self.last_error = None
-            self.publish_status(ip_address)
+            self.publish_status(ip_address, _ticks_ms())
             self.publish_state()
             if self.connected:
                 log("mqtt", "connected and subscribed")
@@ -150,8 +161,10 @@ class MQTTService:
             self.hardware.set_relay(bool(command.get("enabled")))
         elif suffix == "cmd/audio":
             self.hardware.command_audio(command)
+        elif suffix == "cmd/sequence":
+            self.hardware.command_sequence(command, now_ms)
         elif suffix == "cmd/status":
-            self.publish_status()
+            self.publish_status(now_ms=now_ms)
             self.publish_state()
         elif suffix.startswith("cmd/port/"):
             port_number = int(suffix.split("/")[-1])
@@ -159,6 +172,16 @@ class MQTTService:
 
     def _topic(self, suffix):
         return "{}/{}".format(self.topic_root, suffix)
+
+    def _uptime_ms(self, now_ms):
+        self._update_uptime(now_ms)
+        return self.uptime_ms
+
+    def _update_uptime(self, now_ms):
+        elapsed_ms = ticks_diff(now_ms, self.last_uptime_sample_ms)
+        if elapsed_ms > 0:
+            self.uptime_ms += elapsed_ms
+            self.last_uptime_sample_ms = now_ms
 
     def _disconnect_after_error(self, context, exc):
         self.last_error = repr(exc)
