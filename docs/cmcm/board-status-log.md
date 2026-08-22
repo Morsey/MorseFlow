@@ -14,7 +14,7 @@ software commit and whether local uncommitted changes were included.
 - Active config prepared: `firmware/morseboard/board_configs/mb_001.py` copied
   to `firmware/morseboard/board_config.py`.
 - MQTT topic root: `morseflow/prodigy/cmcm/mb-001`.
-- Firmware version: pending commit.
+- Firmware version: git commit `602a462`.
 - Runtime start: `boot.py` auto-runs `app.main()`.
 - Notes: RFID state changes are published immediately on
   `morseflow/prodigy/cmcm/mb-001/event`; events are live-only and not retained.
