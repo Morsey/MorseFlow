@@ -1,6 +1,7 @@
 # CMCM Morseboards
 
-Record each physical Morseboard here as it is installed or tested.
+Record each physical Morseboard here as it is installed or tested. For dated
+test/upload notes, see `docs/cmcm/board-status-log.md`.
 
 | Board ID | Config | Hardware | Location | IP Mode | MQTT Topic Root | Notes |
 | --- | --- | --- | --- | --- | --- | --- |

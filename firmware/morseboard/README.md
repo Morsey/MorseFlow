@@ -17,6 +17,7 @@ Upload these files from this folder to the board filesystem:
 - `boot.py`
 - `app.py`
 - `config.py`
+- `board_config.py`
 - `debug.py`
 - `pins.py`
 - `messages.py`
@@ -30,6 +31,17 @@ Edit `config.py` for the site, room, board ID, MQTT broker, and network mode.
 
 Do not upload a file named `main.py` for the Morseboard runtime. MorseFlow uses
 `app.py`, and `boot.py` imports it and starts `app.main()`.
+
+For bench hardware checks, copy `test_scripts/hardware_pin_test.py` to the board
+filesystem root as `hardware_pin_test.py` and run it manually. It is not part of
+the normal runtime file set. From the REPL:
+
+```python
+import hardware_pin_test
+hardware_pin_test.main()
+```
+
+Press Ctrl-C to stop the test and return all tested outputs to a safe low state.
 
 During development, open `app.py` in VS Code and use MicroPico Run. The guarded
 entry point at the bottom of `app.py` starts `main()` only when the file is run

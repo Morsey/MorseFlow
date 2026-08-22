@@ -1,0 +1,106 @@
+[
+  {
+    "id": "rfid-reader1-knocker1-tab",
+    "type": "tab",
+    "label": "RFID 1 to Knocker 1",
+    "disabled": false,
+    "info": "When RFID reader 1 on mb-001 reports correct/wrong, command demon knocker 1 on mb-002."
+  },
+  {
+    "id": "mqtt-broker-local-rfid-knocker",
+    "type": "mqtt-broker",
+    "name": "Local MQTT",
+    "broker": "127.0.0.1",
+    "port": "1883",
+    "clientid": "node-red-rfid-knocker",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": ""
+  },
+  {
+    "id": "mb001-rfid-event-in",
+    "type": "mqtt in",
+    "z": "rfid-reader1-knocker1-tab",
+    "name": "MB-001 RFID events",
+    "topic": "morseflow/prodigy/cmcm/mb-001/event",
+    "qos": "1",
+    "datatype": "json",
+    "broker": "mqtt-broker-local-rfid-knocker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 150,
+    "y": 100,
+    "wires": [
+      [
+        "reader1-rfid-to-knocker1"
+      ]
+    ]
+  },
+  {
+    "id": "reader1-rfid-to-knocker1",
+    "type": "function",
+    "z": "rfid-reader1-knocker1-tab",
+    "name": "Reader 1 -> knocker 1",
+    "func": "const event = msg.payload || {};\nconst data = event.data || {};\n\nif (event.event !== \"rfid\" || Number(data.reader) !== 1) {\n    return null;\n}\n\nif (data.previous !== \"no_card\") {\n    return null;\n}\n\nlet knocks;\nlet pixel;\n\nif (data.rfid === \"correct\") {\n    knocks = 1;\n    pixel = [0, 255, 0];\n} else if (data.rfid === \"wrong\") {\n    knocks = 2;\n    pixel = [255, 0, 0];\n} else {\n    return null;\n}\n\nmsg.topic = \"morseflow/prodigy/cmcm/mb-002/cmd/sequence\";\nmsg.payload = {\n    pixel_pulse: true,\n    default_pixel: pixel,\n    steps: [\n        {\n            knocker: 1,\n            knocks,\n            knock_ms: 120,\n            pause_ms: 250\n        }\n    ]\n};\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 400,
+    "y": 100,
+    "wires": [
+      [
+        "mb002-sequence-out",
+        "knocker-command-debug"
+      ]
+    ]
+  },
+  {
+    "id": "mb002-sequence-out",
+    "type": "mqtt out",
+    "z": "rfid-reader1-knocker1-tab",
+    "name": "MB-002 sequence",
+    "topic": "",
+    "qos": "1",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt-broker-local-rfid-knocker",
+    "x": 650,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "knocker-command-debug",
+    "type": "debug",
+    "z": "rfid-reader1-knocker1-tab",
+    "name": "knocker command",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 660,
+    "y": 130,
+    "wires": []
+  }
+]
