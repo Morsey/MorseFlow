@@ -6,12 +6,12 @@ test/upload notes, see `docs/cmcm/board-status-log.md`.
 | Board ID | Config | Hardware | Location | IP Mode | MQTT Topic Root | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | `mb-001` | `firmware/morseboard/board_configs/mb_001.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-001` | Candles on ports 1-2; demon seals RFID readers on ports 3-7. |
-| `mb-002` | `firmware/morseboard/board_configs/mb_002.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-002` | Demon knockers on ports 1-3 and 6-7. |
+| `mb-002` | `firmware/morseboard/board_configs/mb_002.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-002` | Demon knockers on ports 1-3; ports 6 and 7 are broken. |
 | `mb-003` | `firmware/morseboard/board_configs/mb_003.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-003` | Reserved. |
 | `mb-004` | `firmware/morseboard/board_configs/mb_004.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-004` | Reserved. |
 | `mb-005` | `firmware/morseboard/board_configs/mb_005.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-005` | Reserved. |
 | `mb-006` | `firmware/morseboard/board_configs/mb_006.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-006` | Reserved. |
-| `mb-007` | `firmware/morseboard/board_configs/mb_007.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-007` | Reserved. |
+| `mb-007` | `firmware/morseboard/board_configs/mb_007.py` | W5500-EVB-Pico/Pico2 | Bench/dev | MQTT disabled for no-network test | `morseflow/prodigy/cmcm/mb-007` | Candles on ports 1-3; LEDs light for 5 seconds at power-up; IR trigger turns LED on for 5 seconds. |
 | `mb-008` | `firmware/morseboard/board_configs/mb_008.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-008` | Reserved. |
 | `mb-009` | `firmware/morseboard/board_configs/mb_009.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-009` | Reserved. |
 | `mb-010` | `firmware/morseboard/board_configs/mb_010.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-010` | Reserved. |
@@ -49,16 +49,39 @@ MB-002 is the demon knocker output board. Its active config is
 | 3 | Demon knocker 3 | Solenoid output | NeoPixel data output | `demon_knocker_3` / knocker 3 / LED 3 | RGB pixel order |
 | 4 | Not connected | Generic output | Generic output | Open | Reserved |
 | 5 | Not connected | Generic output | Generic output | Open | Reserved |
-| 6 | Demon knocker 4 | Solenoid output | NeoPixel data output | `demon_knocker_4` / knocker 4 / LED 4 | GRB pixel order correction |
-| 7 | Demon knocker 5 | Solenoid output | NeoPixel data output | `demon_knocker_5` / knocker 5 / LED 5 | GRB pixel order correction |
+| 6 | Demon knocker 4 | Solenoid output | NeoPixel data output | `demon_knocker_4` / knocker 4 / LED 4 | Broken port; do not rely on this output |
+| 7 | Demon knocker 5 | Solenoid output | NeoPixel data output | `demon_knocker_5` / knocker 5 / LED 5 | Broken port; do not rely on this output |
 | 8 | Not connected | Generic output | Generic output | Open | Reserved |
 
 Use the logical MQTT targets `cmd/demon_knocker/<1-5>` and
 `cmd/demon_led/<1-5>` from Node-RED. The firmware maps those logical numbers to
-the physical ports above, so Node-RED does not need to know that knockers 4 and
-5 are on ports 6 and 7 or that LEDs 4 and 5 use GRB colour order.
+the physical ports above, but mb-002 ports 6 and 7 are currently broken, so
+logical knockers/LEDs 4 and 5 should be treated as unavailable on this board
+until they are moved or repaired.
 
-### MB-003 To MB-010
+### MB-007
+
+MB-007 is a candle input/output board using the same candle hardware pattern as
+MB-001. Its active config is `firmware/morseboard/board_configs/mb_007.py`.
+It is currently configured for no-network bench testing with `MQTT_ENABLED =
+False`: when a candle IR receiver triggers once, the matching candle LED turns
+on for 5 seconds. For this test mode, an active IR input is enough to trigger
+the LED; it does not require a clean idle-to-active edge. Each configured candle
+LED also lights for 5 seconds at power-up. With MQTT disabled, the firmware does
+not start the Ethernet service or search for the network.
+
+| Port | Connected prop | Signal A | Signal B | MQTT role |
+| --- | --- | --- | --- | --- |
+| 1 | Candle 1 | Candle LED output | IR lit-detected input | `candle_1` |
+| 2 | Candle 2 | Candle LED output | IR lit-detected input | `candle_2` |
+| 3 | Candle 3 | Candle LED output | IR lit-detected input | `candle_3` |
+| 4 | Not connected | Unassigned | Unassigned | Open |
+| 5 | Not connected | Unassigned | Unassigned | Open |
+| 6 | Not connected | Unassigned | Unassigned | Open |
+| 7 | Not connected | Unassigned | Unassigned | Open |
+| 8 | Not connected | Unassigned | Unassigned | Open |
+
+### MB-003 To MB-006 And MB-008 To MB-010
 
 These boards are reserved. No connected props are currently recorded in their
 board config files.

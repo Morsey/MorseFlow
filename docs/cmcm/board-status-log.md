@@ -3,6 +3,35 @@
 Use this log for field status notes after upload or bench testing. Record the
 software commit and whether local uncommitted changes were included.
 
+## 2026-08-28
+
+### mb-007
+
+- Status: prepared for upload / current active board config.
+- Reported by: bench/operator context.
+- Hardware: W5500-EVB-Pico/Pico2 Morseboard.
+- Role: candles on ports 1-3.
+- Active config prepared: `firmware/morseboard/board_configs/mb_007.py` copied
+  to `firmware/morseboard/board_config.py`.
+- MQTT topic root: `morseflow/prodigy/cmcm/mb-007`.
+- Test mode: MQTT disabled for no-network bench testing.
+- Notes: candle hardware matches MB-001 candle ports; Signal A drives the candle
+  LED output and Signal B reads the IR lit-detected input. Each configured LED
+  lights for 5 seconds at power-up. One IR trigger turns the matching LED on
+  for 5 seconds. In this no-network test mode, active IR level triggers are
+  accepted without requiring a clean idle-to-active edge. MQTT disabled also
+  stops the firmware from starting Ethernet or searching for the network.
+
+### mb-002
+
+- Status: ports 6 and 7 are broken.
+- Reported by: bench/operator context.
+- Hardware: W5500-EVB-Pico/Pico2 Morseboard.
+- Impact: logical demon knockers/LEDs 4 and 5 were mapped to physical ports 6
+  and 7, so those outputs should be treated as unavailable on this board until
+  moved or repaired.
+- MQTT topic root: `morseflow/prodigy/cmcm/mb-002`.
+
 ## 2026-08-22 14:36 BST
 
 ### mb-001

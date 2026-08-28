@@ -15,10 +15,15 @@ def main():
     status_led = OnboardLED()
     log("app", "creating hardware")
     hardware = MorseboardHardware()
-    log("app", "creating ethernet service")
-    ethernet = EthernetService()
-    log("app", "creating MQTT service")
-    mqtt = MQTTService(hardware)
+    ethernet = None
+    mqtt = None
+    if config.MQTT_ENABLED:
+        log("app", "creating ethernet service")
+        ethernet = EthernetService()
+        log("app", "creating MQTT service")
+        mqtt = MQTTService(hardware)
+    else:
+        log("app", "MQTT disabled; Ethernet service not started")
 
     hardware.safe_defaults()
     log("app", "safe defaults applied")
@@ -32,15 +37,17 @@ def main():
         now_ms = ticks_ms()
         try:
             status_led.update(now_ms, config.APP_LED_TOGGLE_MS)
-            ethernet.update(now_ms)
-            network_ready = ethernet.is_ready()
+            network_ready = False
+            if ethernet is not None:
+                ethernet.update(now_ms)
+                network_ready = ethernet.is_ready()
 
             if network_ready:
                 if not was_network_ready:
                     log("app", "network connected with IP {}".format(ethernet.ip_address()))
                 was_network_ready = True
                 mqtt.update(now_ms, True, ethernet.ip_address())
-            else:
+            elif ethernet is not None:
                 if was_network_ready:
                     log("app", "network disconnected; MQTT stopped")
                 was_network_ready = False
@@ -54,10 +61,12 @@ def main():
             hardware.update(now_ms)
 
             for event_type, event_data in hardware.consume_events():
-                mqtt.publish_event(event_type, event_data)
+                if mqtt is not None:
+                    mqtt.publish_event(event_type, event_data)
 
             if hardware.consume_dirty():
-                mqtt.publish_state()
+                if mqtt is not None:
+                    mqtt.publish_state()
         except Exception as exc:
             if ticks_diff(now_ms, next_error_log_ms) >= 0:
                 log("app", "loop error: {}".format(repr(exc)))

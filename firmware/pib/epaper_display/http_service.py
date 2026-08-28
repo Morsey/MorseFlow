@@ -160,18 +160,32 @@ class HTTPService:
 
     def _index(self, client):
         items = ""
+        options = ""
         for item in list_images():
             name = item["name"]
+            escaped_name = _escape(name)
             items += (
                 "<li><b>{}</b> {} bytes "
                 "<button onclick=\"showImage('{}')\">Show</button> "
                 "<button onclick=\"deleteImage('{}')\">Delete</button></li>"
-            ).format(_escape(name), item["size"], _escape(name), _escape(name))
+            ).format(escaped_name, item["size"], escaped_name, escaped_name)
+            options += "<option value=\"{}\">{} ({} bytes)</option>".format(
+                escaped_name,
+                escaped_name,
+                item["size"],
+            )
+        if not options:
+            options = "<option value=\"\">No .bin files found</option>"
         body = """<!doctype html>
 <html><head><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Epaper PIB</title></head><body>
 <h1>Epaper PIB</h1>
 <p>Current: {current}<br>Busy: {busy}<br>Free: {free} bytes</p>
+<label for="image">Image</label>
+<select id="image">{options}</select>
+<button onclick="showSelected()">Show selected</button>
+<button onclick="location.reload()">Refresh list</button>
+<hr>
 <input id="file" type="file" accept=".bin">
 <button onclick="upload()">Upload .bin</button>
 <button onclick="showColor('white')">White</button>
@@ -182,15 +196,20 @@ class HTTPService:
 function log(t){{document.getElementById('out').textContent=t}}
 function upload(){{
  const f=document.getElementById('file').files[0]; if(!f){{log('choose a file');return}}
- fetch('/images/'+encodeURIComponent(f.name),{{method:'PUT',body:f}}).then(r=>r.text()).then(log)
+ fetch('/images/'+encodeURIComponent(f.name),{{method:'PUT',body:f}}).then(r=>r.text()).then(t=>{{log(t);setTimeout(()=>location.reload(),500)}})
+}}
+function showSelected(){{
+ const n=document.getElementById('image').value; if(!n){{log('no image selected');return}}
+ showImage(n)
 }}
 function showImage(n){{fetch('/show?image='+encodeURIComponent(n),{{method:'POST'}}).then(r=>r.text()).then(log)}}
 function showColor(c){{fetch('/show?color='+c,{{method:'POST'}}).then(r=>r.text()).then(log)}}
-function deleteImage(n){{fetch('/images/'+encodeURIComponent(n),{{method:'DELETE'}}).then(r=>r.text()).then(log)}}
+function deleteImage(n){{fetch('/images/'+encodeURIComponent(n),{{method:'DELETE'}}).then(r=>r.text()).then(t=>{{log(t);setTimeout(()=>location.reload(),500)}})}}
 </script></body></html>""".format(
             current=self.display.current_image or self.display.current_color,
             busy=self.display.busy,
             free=fs_free_bytes(),
+            options=options,
             items=items,
         )
         _send(client, b"200 OK", b"text/html", body)

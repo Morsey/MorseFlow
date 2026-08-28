@@ -1,5 +1,5 @@
 from machine import Pin
-from time import ticks_add, ticks_diff
+from time import ticks_add, ticks_diff, ticks_ms
 
 import config
 from debug import log
@@ -217,7 +217,19 @@ class CandlePort:
         changed = False
         sensor_active = self._sensor_active()
 
-        if sensor_active != self.sensor_was_active:
+        if (
+            getattr(config, "CANDLE_TRIGGER_ON_ACTIVE", False)
+            and sensor_active
+            and not self.candle_is_on
+        ):
+            self.armed_for_trigger = False
+            self.turn_on(now_ms, config.CANDLE_ON_TIME_MS)
+            changed = True
+            log(
+                "port{}".format(self.port_number),
+                "candle sensor active",
+            )
+        elif sensor_active != self.sensor_was_active:
             changed = True
             if sensor_active:
                 if self.armed_for_trigger:
@@ -295,7 +307,11 @@ class CandlePort:
         return data
 
     def safe_defaults(self):
-        self.turn_off()
+        startup_pulse_ms = getattr(config, "CANDLE_STARTUP_PULSE_MS", 0)
+        if startup_pulse_ms:
+            self.turn_on(ticks_ms(), startup_pulse_ms)
+        else:
+            self.turn_off()
 
     def _sensor_active(self):
         return self.lit.value() == config.CANDLE_SENSOR_TRIGGER_VALUE

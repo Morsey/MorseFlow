@@ -11,6 +11,7 @@ connection for HTTP file management and MQTT display commands.
 Upload these files to the Pico filesystem root for the networked runtime:
 
 - `boot.py`
+- `main.py`
 - `app.py`
 - `config.py`
 - `debug.py`
@@ -21,10 +22,83 @@ Upload these files to the Pico filesystem root for the networked runtime:
 - `messages.py`
 - `mqtt_client.py`
 - `mqtt_service.py`
+- `onboard_led.py`
 
 Upload image buffers into an `images/` folder on the Pico, or upload them later
-through the HTTP web interface. Do not upload `main.py`; `boot.py` starts the
-runtime.
+through the HTTP web interface. `boot.py` keeps the USB REPL available, and
+`main.py` starts the configured runtime after the recovery window.
+
+## Boot
+
+The startup flow matches the Morseboard firmware:
+
+- `boot.py` enables Ctrl-C on the USB serial REPL and returns quickly.
+- `main.py` flashes the onboard LED at 10 Hz while waiting briefly before
+  auto-start.
+- Press Ctrl-C during that window to skip auto-start and stay at the REPL.
+- If not interrupted, `main.py` imports the module named by `AUTO_RUN_MODULE`
+  and calls `AUTO_RUN_FUNCTION`.
+
+For the full display runtime:
+
+```python
+AUTO_RUN_MODULE = "app"
+AUTO_RUN_FUNCTION = "main"
+```
+
+For the network/MQTT-only test, set `AUTO_RUN_MODULE = "test_network_mqtt"` or
+run `test_network_mqtt.main()` manually from the REPL.
+
+## Network/MQTT Test
+
+Upload these files to the Pico filesystem root:
+
+- `boot.py`
+- `main.py`
+- `config.py`
+- `debug.py`
+- `ethernet.py`
+- `messages.py`
+- `mqtt_client.py`
+- `onboard_led.py`
+- `test_network_mqtt.py`
+
+Run manually from the REPL if auto-start is interrupted:
+
+```python
+import test_network_mqtt
+test_network_mqtt.main()
+```
+
+The test publishes retained status to:
+
+```text
+morseflow/prodigy/cmcm/epaper-001/status
+```
+
+It publishes heartbeat messages every 10 seconds to:
+
+```text
+morseflow/prodigy/cmcm/epaper-001/heartbeat
+```
+
+It subscribes to:
+
+```text
+morseflow/prodigy/cmcm/epaper-001/cmd/#
+```
+
+Send a test message to:
+
+```text
+morseflow/prodigy/cmcm/epaper-001/cmd/test
+```
+
+Example payload:
+
+```json
+{"test":"hello"}
+```
 
 ## HTTP
 
@@ -35,7 +109,9 @@ http://<board-ip>/
 ```
 
 The web page can upload `.bin` files, list images, delete images, display an
-image, and clear the panel to white or black.
+image, and clear the panel to white or black. The home page scans the device for
+all `.bin` files in `images/` and the filesystem root, then lets the user select
+any detected image from a dropdown and show it.
 
 HTTP API endpoints:
 
