@@ -18,19 +18,20 @@ what each Morseboard port physically controls or reports.
 
 ## MB-002
 
-Ports 1-5 are direct-wired demon knocker props with no PIB microcontroller.
+Ports 1-3 and 6-7 are direct-wired demon knocker props with no PIB microcontroller.
 Signal A drives each solenoid output. Signal B drives each NeoPixel data line
-directly from the Morseboard.
+directly from the Morseboard. Knockers 4 and 5 use a GRB pixel colour order in
+the mb-002 config so Node-RED can still send normal RGB commands.
 
 | Port | Signal A | Signal B | Prop Power | Prop / PIB | Status |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 1, no PIB firmware | Bench test |
 | 2 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 2, no PIB firmware | Bench test |
 | 3 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 3, no PIB firmware | Bench test |
-| 4 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 4, no PIB firmware | Bench test |
-| 5 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 5, no PIB firmware | Bench test |
-| 6 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
-| 7 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
+| 4 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
+| 5 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
+| 6 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 4, no PIB firmware | Bench test |
+| 7 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 5, no PIB firmware | Bench test |
 | 8 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
 
 ## Prop Template

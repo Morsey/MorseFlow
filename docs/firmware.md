@@ -7,12 +7,14 @@ It assumes a W5500-enabled firmware build for the specific WIZnet board.
 
 Main modules:
 
-- `boot.py` - keeps the default USB serial REPL available and conditionally starts the app.
+- `boot.py` - keeps the default USB serial REPL available.
+- `main.py` - MicroPython auto-start wrapper with the REPL recovery window.
 - `app.py` - runtime entrypoint and service loop.
 - `config.py` - shared defaults and board-specific override loader.
 - `board_config.py` - active board identity, port roles, and per-board overrides.
 - `board_configs/` - stored per-board config files; copy one to `board_config.py` before upload.
 - `debug.py` - small REPL logging helper controlled by `DEBUG_REPL`.
+- `onboard_led.py` - onboard status LED helper.
 - `pins.py` - pin assignments for W5500, DFPlayer, prop power, relay, and ports.
 - `hardware.py` - local IO abstractions and safe defaults.
 - `mqtt_client.py` - bundled lightweight MQTT client.
@@ -38,14 +40,17 @@ and does not redirect it to UART0, because UART0 is used by the DFPlayer Mini
 on GPIO0/GPIO1.
 
 `firmware/morseboard/boot.py` enables Ctrl-C interruption with
-`micropython.kbd_intr(3)`. If the GPIO21 boot REPL button is held low during
-boot, `boot.py` skips `app.main()` and leaves the board at the USB REPL. The app
-firmware loop also calls `machine.idle()` each pass so the runtime stays
-cooperative during development and recovery.
+`micropython.kbd_intr(3)` and then returns. `main.py` waits briefly so USB serial
+can attach, flashing the onboard LED at 10 Hz during the wait. If Ctrl-C is
+received during that window, `main.py` skips `app.main()` and leaves the board at
+the USB REPL. If no interrupt is received, `main.py` starts the app normally.
+While the app is running, the onboard LED pulses at 1 Hz. This does not use USB
+power detection or GPIO power indicators, because the board can be powered from
+the USB pin even when no computer is attached.
 
-The Morseboard runtime is named `app.py`, not `main.py`. When the GPIO21 boot
-REPL button is not held, `boot.py` imports `app` and starts `app.main()`. It
-does not try to detect USB power or whether a serial terminal is attached.
+The Morseboard runtime logic is named `app.py`. `main.py` is only the
+MicroPython auto-start wrapper. When the REPL pause window times out without
+Ctrl-C, `main.py` imports `app` and starts `app.main()`.
 
 For development, connect over the USB serial REPL and press Ctrl-C to interrupt
 the running app. For manual testing, VS Code MicroPico can still run `app.py`

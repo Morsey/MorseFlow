@@ -1,46 +1,40 @@
-BOARD_ID = "mb-001"
+BOARD_ID = "mb-002"
 
-CANDLE_PORTS = {
+# MB2 ports 1-3, 6-7: Demon knockers. Signal A drives each solenoid; Signal B
+# drives each NeoPixel data line directly from the Morseboard.
+RFID_INPUT_PORTS = {}
+CANDLE_PORTS = {}
+DEMON_KNOCKER_PORTS = {
     1: {
-        "prop": "candle_1",
-        "candle": 1,
+        "prop": "demon_knocker_1",
+        "knocker": 1,
+        "pixel_count": 1,
+        "solenoid_active_low": False,
     },
     2: {
-        "prop": "candle_2",
-        "candle": 2,
+        "prop": "demon_knocker_2",
+        "knocker": 2,
+        "pixel_count": 1,
+        "solenoid_active_low": False,
     },
-}
-
-# MB1 RFID PIB wiring currently has Signal A = wrong card and Signal B = correct card.
-RFID_INPUT_PORTS = {
     3: {
-        "prop": "demon_seal_1",
-        "reader": 1,
-        "correct_signal": "b",
-        "wrong_signal": "a",
-    },
-    4: {
-        "prop": "demon_seal_2",
-        "reader": 2,
-        "correct_signal": "b",
-        "wrong_signal": "a",
-    },
-    5: {
-        "prop": "demon_seal_3",
-        "reader": 3,
-        "correct_signal": "b",
-        "wrong_signal": "a",
+        "prop": "demon_knocker_3",
+        "knocker": 3,
+        "pixel_count": 1,
+        "solenoid_active_low": False,
     },
     6: {
-        "prop": "demon_seal_4",
-        "reader": 4,
-        "correct_signal": "b",
-        "wrong_signal": "a",
+        "prop": "demon_knocker_4",
+        "knocker": 4,
+        "pixel_count": 1,
+        "pixel_color_order": "GRB",
+        "solenoid_active_low": False,
     },
     7: {
-        "prop": "demon_seal_5",
-        "reader": 5,
-        "correct_signal": "b",
-        "wrong_signal": "a",
+        "prop": "demon_knocker_5",
+        "knocker": 5,
+        "pixel_count": 1,
+        "pixel_color_order": "GRB",
+        "solenoid_active_low": False,
     },
 }

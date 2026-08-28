@@ -7,10 +7,12 @@ from debug import log
 from ethernet import EthernetService
 from hardware import MorseboardHardware
 from mqtt_service import MQTTService
+from onboard_led import OnboardLED
 
 
 def main():
     log("app", "starting MorseFlow Morseboard runtime")
+    status_led = OnboardLED()
     log("app", "creating hardware")
     hardware = MorseboardHardware()
     log("app", "creating ethernet service")
@@ -29,6 +31,7 @@ def main():
     while True:
         now_ms = ticks_ms()
         try:
+            status_led.update(now_ms, config.APP_LED_TOGGLE_MS)
             ethernet.update(now_ms)
             network_ready = ethernet.is_ready()
 

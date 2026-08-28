@@ -25,6 +25,8 @@ morseflow/prodigy/cmcm/mb-001
 | Knock sequence command | `morseflow/prodigy/cmcm/mb-001/cmd/sequence` |
 | Status request | `morseflow/prodigy/cmcm/mb-001/cmd/status` |
 | Port command | `morseflow/prodigy/cmcm/mb-001/cmd/port/<n>` |
+| Demon knocker command | `morseflow/prodigy/cmcm/mb-002/cmd/demon_knocker/<1-5>` |
+| Demon LED command | `morseflow/prodigy/cmcm/mb-002/cmd/demon_led/<1-5>` |
 
 Switched 5V prop power is normally on from boot. Use `cmd/power` mainly to
 reset or recover attached PIBs.
@@ -90,31 +92,64 @@ current state of all configured candle ports.
 
 ## Demon Knocker Commands
 
-MB2 ports 1-5 are direct-wired demon knockers. Signal A drives each solenoid,
-and Signal B drives each NeoPixel data line.
+MB2 ports 1-3 and 6-7 are direct-wired demon knockers. Signal A drives each
+solenoid, and Signal B drives each NeoPixel data line. Knockers 4 and 5 correct
+red/green swapped LEDs in the mb-002 config, so MQTT commands should still use
+normal RGB values.
 
-Pulse the knocker for the default `DEMON_KNOCKER_PULSE_MS`:
+Use the first-class demon knocker topic when game logic wants to address
+knockers by number rather than physical Morseboard port:
+
+```text
+morseflow/prodigy/cmcm/mb-002/cmd/demon_knocker/1
+```
+
+Knock once with the default `DEMON_KNOCKER_PULSE_MS`:
 
 ```json
 {"knock": true}
 ```
 
-Pulse the knocker for a specific duration:
+Knock three times, with 180 ms between knocks and a 120 ms knock duration:
 
 ```json
-{"knock_ms": 120}
+{"knocks": 3, "knock_ms": 120, "pause_ms": 180}
 ```
 
-Set the NeoPixel:
+Knock three times while flashing the matching demon LED red for the same timing
+as each knock:
 
 ```json
-{"pixel": [255, 0, 0]}
+{"knocks": 3, "knock_ms": 120, "pause_ms": 180, "pixel": [255, 0, 0], "pixel_pulse": true}
 ```
 
-Turn the prop outputs off:
+Use the first-class demon LED topic for LED-only control. This never moves the
+solenoid:
+
+```text
+morseflow/prodigy/cmcm/mb-002/cmd/demon_led/1
+```
+
+Set the demon LED to green:
+
+```json
+{"pixel": [0, 255, 0]}
+```
+
+Turn that demon LED off:
 
 ```json
 {"off": true}
+```
+
+The older physical port command still works for direct bench testing:
+
+```text
+morseflow/prodigy/cmcm/mb-002/cmd/port/6
+```
+
+```json
+{"pixel": [255, 0, 0]}
 ```
 
 ## Demon Knocker Sequences
@@ -125,18 +160,34 @@ Send a board-level sequence command to:
 morseflow/prodigy/cmcm/mb-002/cmd/sequence
 ```
 
-The sequence runs without blocking MQTT. Steps run in order. Use `knocker` to
-target demon knocker 1-5. `port` is still accepted as a compatibility alias.
-Within each step, `pulses` can define uneven knock timings. Each pulse can set
-`knock_ms`, `pause_ms`, `pixel`, and `pixel_pulse`. `pause_ms` is the delay
-after that pulse before the next pulse in the same step. `after_ms` is the delay
-before the next knocker step. When `pixel_pulse` is true, the NeoPixel is set to
-`pixel` during the knock and turned off during the pause.
+The sequence runs without blocking MQTT. Steps run in order. Use
+`{"action":"led","led":1}` for LED-only steps and
+`{"action":"knocker","knocker":1}` for knock steps. The legacy `knocker` and
+`port` fields are still accepted for knocker steps. Within each knocker step,
+`pulses` can define uneven knock timings. Each pulse can set `knock_ms`,
+`pause_ms`, `pixel`, and `pixel_pulse`. `pause_ms` is the delay after that pulse
+before the next pulse in the same step. `after_ms` is the delay before the next
+sequence step. When `pixel_pulse` is true, the demon LED is set to `pixel`
+during the knock and turned off during the pause.
+
+```json
+{
+  "steps": [
+    {"action": "led", "led": 1, "pixel": [0, 255, 0], "after_ms": 500},
+    {"action": "knocker", "knocker": 1, "knocks": 1, "knock_ms": 120, "after_ms": 300},
+    {"action": "knocker", "knocker": 2, "knocks": 2, "knock_ms": 120, "pause_ms": 180, "pixel": [255, 0, 0], "pixel_pulse": true, "after_ms": 300},
+    {"action": "led", "led": 1, "pixel": [0, 0, 0], "after_ms": 0}
+  ]
+}
+```
+
+Uneven knock timings are also supported:
 
 ```json
 {
   "steps": [
     {
+      "action": "knocker",
       "knocker": 1,
       "after_ms": 300,
       "pulses": [
@@ -144,26 +195,7 @@ before the next knocker step. When `pixel_pulse` is true, the NeoPixel is set to
         {"knock_ms": 160, "pause_ms": 240, "pixel": [255, 0, 0], "pixel_pulse": true},
         {"knock_ms": 80, "pause_ms": 0, "pixel": [255, 0, 0], "pixel_pulse": true}
       ]
-    },
-    {
-      "knocker": 2,
-      "after_ms": 300,
-      "pulses": [
-        {"knock_ms": 120, "pause_ms": 140, "pixel": [255, 80, 0], "pixel_pulse": true},
-        {"knock_ms": 120, "pause_ms": 0, "pixel": [255, 80, 0], "pixel_pulse": true}
-      ]
     }
-  ]
-}
-```
-
-For evenly spaced knocks, the shorter form is still supported:
-
-```json
-{
-  "steps": [
-    {"knocker": 1, "knocks": 3, "knock_ms": 120, "pause_ms": 180, "after_ms": 300, "pixel": [255, 0, 0], "pixel_pulse": true},
-    {"knocker": 2, "knocks": 2, "knock_ms": 120, "pause_ms": 180, "after_ms": 0, "pixel": [255, 80, 0], "pixel_pulse": true}
   ]
 }
 ```

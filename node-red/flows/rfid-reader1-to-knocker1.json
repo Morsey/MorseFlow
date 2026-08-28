@@ -2,9 +2,9 @@
   {
     "id": "rfid-reader1-knocker1-tab",
     "type": "tab",
-    "label": "RFID 1 to Knocker 1",
+    "label": "RFID Readers to Knockers",
     "disabled": false,
-    "info": "When RFID reader 1 on mb-001 reports correct/wrong, command demon knocker 1 on mb-002."
+    "info": "When RFID readers 1-5 on mb-001 report correct/wrong, command matching demon knockers 1-5 on mb-002."
   },
   {
     "id": "mqtt-broker-local-rfid-knocker",
@@ -45,16 +45,16 @@
     "y": 100,
     "wires": [
       [
-        "reader1-rfid-to-knocker1"
+        "rfid-to-matching-knocker"
       ]
     ]
   },
   {
-    "id": "reader1-rfid-to-knocker1",
+    "id": "rfid-to-matching-knocker",
     "type": "function",
     "z": "rfid-reader1-knocker1-tab",
-    "name": "Reader 1 -> knocker 1",
-    "func": "const event = msg.payload || {};\nconst data = event.data || {};\n\nif (event.event !== \"rfid\" || Number(data.reader) !== 1) {\n    return null;\n}\n\nif (data.previous !== \"no_card\") {\n    return null;\n}\n\nlet knocks;\nlet pixel;\n\nif (data.rfid === \"correct\") {\n    knocks = 1;\n    pixel = [0, 255, 0];\n} else if (data.rfid === \"wrong\") {\n    knocks = 2;\n    pixel = [255, 0, 0];\n} else {\n    return null;\n}\n\nmsg.topic = \"morseflow/prodigy/cmcm/mb-002/cmd/sequence\";\nmsg.payload = {\n    pixel_pulse: true,\n    default_pixel: pixel,\n    steps: [\n        {\n            knocker: 1,\n            knocks,\n            knock_ms: 120,\n            pause_ms: 250\n        }\n    ]\n};\nreturn msg;",
+    "name": "Reader -> matching knocker",
+    "func": "const event = msg.payload || {};\nconst data = event.data || {};\nconst reader = Number(data.reader);\n\nif (event.event !== \"rfid\" || reader < 1 || reader > 5) {\n    return null;\n}\n\nif (data.previous !== \"no_card\") {\n    return null;\n}\n\nlet knocks;\nlet pixel;\n\nif (data.rfid === \"correct\") {\n    knocks = 1;\n    pixel = [0, 255, 0];\n} else if (data.rfid === \"wrong\") {\n    knocks = 2;\n    pixel = [255, 0, 0];\n} else {\n    return null;\n}\n\nmsg.topic = \"morseflow/prodigy/cmcm/mb-002/cmd/sequence\";\nmsg.payload = {\n    pixel_pulse: true,\n    default_pixel: pixel,\n    steps: [\n        {\n            knocker: reader,\n            knocks,\n            knock_ms: 120,\n            pause_ms: 250\n        }\n    ]\n};\nreturn msg;",
     "outputs": 1,
     "timeout": 0,
     "noerr": 0,

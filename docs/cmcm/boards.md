@@ -6,7 +6,7 @@ test/upload notes, see `docs/cmcm/board-status-log.md`.
 | Board ID | Config | Hardware | Location | IP Mode | MQTT Topic Root | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | `mb-001` | `firmware/morseboard/board_configs/mb_001.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-001` | Candles on ports 1-2; demon seals RFID readers on ports 3-7. |
-| `mb-002` | `firmware/morseboard/board_configs/mb_002.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-002` | Demon knockers on ports 1-5. |
+| `mb-002` | `firmware/morseboard/board_configs/mb_002.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-002` | Demon knockers on ports 1-3 and 6-7. |
 | `mb-003` | `firmware/morseboard/board_configs/mb_003.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-003` | Reserved. |
 | `mb-004` | `firmware/morseboard/board_configs/mb_004.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-004` | Reserved. |
 | `mb-005` | `firmware/morseboard/board_configs/mb_005.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-005` | Reserved. |

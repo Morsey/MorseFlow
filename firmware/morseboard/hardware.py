@@ -310,6 +310,7 @@ class DemonKnockerPort:
         self.solenoid = Pin(signal_a_pin, Pin.OUT)
         self.pixel_data = Pin(signal_b_pin, Pin.OUT)
         self.pixel_count = int(self.metadata.get("pixel_count", 1))
+        self.pixel_color_order = self.metadata.get("pixel_color_order", "RGB")
         self.solenoid_active_low = bool(self.metadata.get("solenoid_active_low"))
         self.pixels = NeoPixel(self.pixel_data, self.pixel_count)
         self.solenoid_deadline = None
@@ -425,6 +426,7 @@ class DemonKnockerPort:
             "pin_test_active": self.test_step is not None,
             "pin_test_step": self.test_step,
             "pixel": list(self.pixel_color),
+            "pixel_color_order": self.pixel_color_order,
             "prop": self.metadata.get("prop"),
             "knocker": self.metadata.get("knocker"),
         }
@@ -438,9 +440,21 @@ class DemonKnockerPort:
         self.set_pixel((0, 0, 0))
 
     def _write_pixel(self, color):
+        color = self._physical_pixel_color(color)
         for index in range(self.pixel_count):
             self.pixels[index] = color
         self.pixels.write()
+
+    def _physical_pixel_color(self, color):
+        channels = {
+            "R": color[0],
+            "G": color[1],
+            "B": color[2],
+        }
+        order = str(self.pixel_color_order).upper()
+        if len(order) != 3:
+            order = "RGB"
+        return tuple(channels.get(channel, 0) for channel in order[:3])
 
     def _set_solenoid(self, enabled):
         if self.solenoid_active_low:
@@ -564,6 +578,41 @@ class MorseboardHardware:
         if command.get("stop"):
             self.dfplayer.stop()
 
+    def command_demon_led(self, led_number, command):
+        port = self._demon_knocker_by_number(int(led_number))
+        if port is None:
+            log("demon_led", "ignored invalid led {}".format(led_number))
+            return
+        if command.get("off"):
+            port.set_pixel((0, 0, 0))
+            self.dirty = True
+            return
+        color = self._command_pixel(command)
+        if color is None:
+            log("demon_led", "ignored led {} without pixel".format(led_number))
+            return
+        port.set_pixel(color)
+        self.dirty = True
+
+    def command_demon_knocker(self, knocker_number, command, now_ms):
+        port = self._demon_knocker_by_number(int(knocker_number))
+        if port is None:
+            log("demon_knocker", "ignored invalid knocker {}".format(knocker_number))
+            return
+        if command.get("stop"):
+            self.stop_sequence()
+            return
+        if command.get("off"):
+            port.command({"off": True}, now_ms)
+            self.dirty = True
+            return
+
+        step = dict(command)
+        step["knocker"] = int(knocker_number)
+        if self._command_pixel(step) is not None and "pixel_pulse" not in step:
+            step["pixel_pulse"] = True
+        self.command_sequence({"steps": [step]}, now_ms)
+
     def command_sequence(self, command, now_ms):
         if command.get("stop"):
             self.stop_sequence()
@@ -592,15 +641,35 @@ class MorseboardHardware:
             if not hasattr(step, "get"):
                 log("sequence", "ignored invalid step")
                 continue
-            knocker_number = self._int_or_none(step.get("knocker"))
-            port_number = self._int_or_none(step.get("port"))
-            port = None
-            if knocker_number is not None:
-                port = self._demon_knocker_by_number(knocker_number)
-            elif port_number is not None:
-                port = self._demon_knocker_by_port(port_number)
-                knocker_number = port.metadata.get("knocker") if port else None
+            action = self._sequence_action(step)
+            if action == "led":
+                port = self._sequence_demon_port(step, led_step=True)
+                if port is None:
+                    log("sequence", "ignored invalid demon led step")
+                    continue
+                color = self._command_pixel(step)
+                if color is None:
+                    log("sequence", "ignored demon led step without pixel")
+                    continue
+                normalized.append({
+                    "type": "led",
+                    "port": port.port_number,
+                    "knocker": port.metadata.get("knocker"),
+                    "pixel": color,
+                    "after_ms": self._nonnegative_int(
+                        step.get("after_ms", defaults["after_ms"]),
+                        defaults["after_ms"],
+                    ),
+                })
+                continue
+
+            port = self._sequence_demon_port(step, led_step=False)
+            if port is not None:
+                knocker_number = port.metadata.get("knocker")
             else:
+                knocker_number = self._int_or_none(
+                    step.get("knocker", step.get("demon_knocker")),
+                )
                 log("sequence", "ignored step without valid knocker")
                 continue
 
@@ -613,6 +682,7 @@ class MorseboardHardware:
                 log("sequence", "ignored knocker {} with no pulses".format(knocker_number))
                 continue
             normalized.append({
+                "type": "knocker",
                 "port": port.port_number,
                 "knocker": knocker_number,
                 "pulses": pulses,
@@ -780,6 +850,15 @@ class MorseboardHardware:
             self.sequence_current_step = step
             self.sequence_current_port = self.ports[step["port"] - 1]
             self.sequence_pulse_index = 0
+            if step["type"] == "led":
+                self.sequence_current_port.set_pixel(step["pixel"])
+                self.sequence_phase = "after_step"
+                self.sequence_deadline = ticks_add(now_ms, step["after_ms"])
+                log(
+                    "sequence",
+                    "demon led {} pixel {}".format(step["knocker"], step["pixel"]),
+                )
+                return True
             self.sequence_phase = "knock"
             return self._update_sequence(now_ms)
 
@@ -871,6 +950,36 @@ class MorseboardHardware:
             return port
         return None
 
+    def _sequence_action(self, step):
+        action = step.get("action", step.get("type"))
+        if action:
+            action = str(action).lower()
+            if action in ("led", "demon_led", "pixel"):
+                return "led"
+            if action in ("knock", "knocker", "demon_knocker"):
+                return "knocker"
+        if step.get("demon_led") is not None or step.get("led") is not None:
+            return "led"
+        return "knocker"
+
+    def _sequence_demon_port(self, step, led_step=False):
+        key = "led" if led_step else "knocker"
+        target = self._int_or_none(step.get(key))
+        if target is None:
+            target = self._int_or_none(step.get("demon_{}".format(key)))
+        if target is not None:
+            return self._demon_knocker_by_number(target)
+        port_number = self._int_or_none(step.get("port"))
+        if port_number is not None:
+            return self._demon_knocker_by_port(port_number)
+        return None
+
+    def _command_pixel(self, command):
+        for name in ("pixel", "rgb", "color", "colour"):
+            if name in command:
+                return command[name]
+        return None
+
     def _sequence_pulses(self, step, defaults):
         pulses = step.get("pulses")
         if pulses:
@@ -879,10 +988,12 @@ class MorseboardHardware:
                 for pulse in pulses
             ]
 
-        knock_values = step.get("knock_ms")
+        knock_values = step.get("knock_ms", step.get("duration_ms"))
         if not isinstance(knock_values, (list, tuple)):
             knocks = self._nonnegative_int(step.get("knocks", 1), 1)
-            knock_values = [step.get("knock_ms", defaults["knock_ms"])] * knocks
+            knock_values = [
+                step.get("knock_ms", step.get("duration_ms", defaults["knock_ms"]))
+            ] * knocks
 
         pause_values = step.get("pause_ms", defaults["pause_ms"])
         normalized = []
@@ -902,8 +1013,14 @@ class MorseboardHardware:
     def _normalize_pulse(self, pulse, step, defaults):
         if hasattr(pulse, "get"):
             knock_ms = pulse.get("knock_ms", defaults["knock_ms"])
+            if "duration_ms" in pulse:
+                knock_ms = pulse.get("duration_ms")
             pause_ms = pulse.get("pause_ms", step.get("pause_ms", defaults["pause_ms"]))
-            pixel = pulse.get("pixel", step.get("pixel", defaults["pixel"]))
+            pixel = self._command_pixel(pulse)
+            if pixel is None:
+                pixel = self._command_pixel(step)
+            if pixel is None:
+                pixel = defaults["pixel"]
             pixel_pulse = pulse.get(
                 "pixel_pulse",
                 step.get("pixel_pulse", defaults["pixel_pulse"]),
@@ -911,7 +1028,9 @@ class MorseboardHardware:
         else:
             knock_ms = pulse
             pause_ms = step.get("pause_ms", defaults["pause_ms"])
-            pixel = step.get("pixel", defaults["pixel"])
+            pixel = self._command_pixel(step)
+            if pixel is None:
+                pixel = defaults["pixel"]
             pixel_pulse = step.get("pixel_pulse", defaults["pixel_pulse"])
         return {
             "knock_ms": self._nonnegative_int(knock_ms, defaults["knock_ms"]),

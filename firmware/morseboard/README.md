@@ -15,10 +15,12 @@ files to the board.
 Upload these files from this folder to the board filesystem:
 
 - `boot.py`
+- `main.py`
 - `app.py`
 - `config.py`
 - `board_config.py`
 - `debug.py`
+- `onboard_led.py`
 - `pins.py`
 - `messages.py`
 - `dfplayer.py`
@@ -29,8 +31,9 @@ Upload these files from this folder to the board filesystem:
 
 Edit `config.py` for the site, room, board ID, MQTT broker, and network mode.
 
-Do not upload a file named `main.py` for the Morseboard runtime. MorseFlow uses
-`app.py`, and `boot.py` imports it and starts `app.main()`.
+MorseFlow uses `main.py` only as the MicroPython auto-start wrapper. The runtime
+logic stays in `app.py`, and `main.py` imports it and starts `app.main()` after
+the REPL recovery window.
 
 For bench hardware checks, copy `test_scripts/hardware_pin_test.py` to the board
 filesystem root as `hardware_pin_test.py` and run it manually. It is not part of
@@ -45,7 +48,7 @@ Press Ctrl-C to stop the test and return all tested outputs to a safe low state.
 
 During development, open `app.py` in VS Code and use MicroPico Run. The guarded
 entry point at the bottom of `app.py` starts `main()` only when the file is run
-directly, while still allowing `boot.py` to import `app` safely.
+directly, while still allowing `main.py` to import `app` safely.
 
 The project bundles a lightweight MQTT client as `mqtt_client.py`. It is a
 single top-level file so it can be uploaded through VS Code MicroPico without
@@ -76,9 +79,14 @@ device from VS Code MicroPico, Thonny, or another serial terminal. Do not
 redirect or disable `dupterm`, and do not move the REPL onto UART0 because
 UART0 is reserved for the DFPlayer Mini on GPIO0/GPIO1.
 
-`boot.py` does not detect USB power. It always imports `app` and starts
-`app.main()`. When a USB REPL is attached, press Ctrl-C to interrupt the running
-app and return to the REPL.
+`boot.py` does not detect USB power. It leaves the default USB serial REPL
+enabled and returns quickly. `main.py` then waits briefly so USB serial can
+attach, flashing the onboard LED at 10 Hz during the wait. Press Ctrl-C during
+that window to skip `app.main()` and stay at the REPL. If no interrupt is
+received, `main.py` imports `app` and starts `app.main()`. While the app is
+running, the onboard LED pulses at 1 Hz. When a USB REPL is attached after the
+app has started, press Ctrl-C to interrupt the running app and return to the
+REPL.
 
 Set `DEBUG_REPL = False` in `config.py` to silence MorseFlow debug output.
 

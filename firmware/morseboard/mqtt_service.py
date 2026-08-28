@@ -166,6 +166,12 @@ class MQTTService:
         elif suffix == "cmd/status":
             self.publish_status(now_ms=now_ms)
             self.publish_state()
+        elif suffix.startswith("cmd/demon_knocker/"):
+            knocker_number = int(suffix.split("/")[-1])
+            self.hardware.command_demon_knocker(knocker_number, command, now_ms)
+        elif suffix.startswith("cmd/demon_led/"):
+            led_number = int(suffix.split("/")[-1])
+            self.hardware.command_demon_led(led_number, command)
         elif suffix.startswith("cmd/port/"):
             port_number = int(suffix.split("/")[-1])
             self.hardware.command_port(port_number, command, now_ms)

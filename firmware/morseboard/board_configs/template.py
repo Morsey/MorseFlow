@@ -23,3 +23,16 @@ CANDLE_PORTS = {
     #     "candle": 1,
     # },
 }
+
+# Demon knocker ports use Signal A as the solenoid output and Signal B as a
+# directly driven NeoPixel data line. Keep commands/status as logical RGB; set
+# pixel_color_order to "GRB" for LED batches with red/green swapped.
+DEMON_KNOCKER_PORTS = {
+    # 2: {
+    #     "prop": "demon_knocker_1",
+    #     "knocker": 1,
+    #     "pixel_count": 1,
+    #     "pixel_color_order": "RGB",
+    #     "solenoid_active_low": False,
+    # },
+}

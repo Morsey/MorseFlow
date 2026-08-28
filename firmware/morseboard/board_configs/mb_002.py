@@ -1,6 +1,6 @@
 BOARD_ID = "mb-002"
 
-# MB2 ports 1-5: Demon knockers. Signal A drives each solenoid; Signal B
+# MB2 ports 1-3, 6-7: Demon knockers. Signal A drives each solenoid; Signal B
 # drives each NeoPixel data line directly from the Morseboard.
 RFID_INPUT_PORTS = {}
 CANDLE_PORTS = {}
@@ -23,16 +23,18 @@ DEMON_KNOCKER_PORTS = {
         "pixel_count": 1,
         "solenoid_active_low": False,
     },
-    4: {
+    6: {
         "prop": "demon_knocker_4",
         "knocker": 4,
         "pixel_count": 1,
+        "pixel_color_order": "GRB",
         "solenoid_active_low": False,
     },
-    5: {
+    7: {
         "prop": "demon_knocker_5",
         "knocker": 5,
         "pixel_count": 1,
+        "pixel_color_order": "GRB",
         "solenoid_active_low": False,
     },
 }
