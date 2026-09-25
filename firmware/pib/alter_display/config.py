@@ -1,0 +1,76 @@
+# 5x SPI OLED Alter Display PIB test configuration.
+
+AUTO_RUN_MODULE = "test_network_mqtt"
+AUTO_RUN_FUNCTION = "main"
+BOOT_REPL_PAUSE_MS = 5000
+BOOT_LED_TOGGLE_MS = 50
+
+SPI_BUS = 1
+SPI_BAUDRATE = 4_000_000
+
+OLED_SCK_PIN = 10
+OLED_MOSI_PIN = 11
+OLED_DC_PIN = 12
+OLED_RES_PIN = 15
+OLED_CS_PINS = (2, 3, 4, 5, 6)
+OLED_TEST_COUNT = 1
+
+OLED_WIDTH = 128
+OLED_HEIGHT = 64
+OLED_FRAME_DELAY_MS = 30
+OLED_SWEEP_STEP_PIXELS = 16
+OLED_IMAGE_HOLD_MS = 1000
+
+ENCODER_CLK_PIN = 7
+ENCODER_DT_PIN = 8
+ENCODER_SW_PIN = 9
+ENCODER_POLL_MS = 2
+ENCODER_STEPS_PER_DETENT = 4
+ENCODER_DEBOUNCE_MS = 3
+ENCODER_BUTTON_DEBOUNCE_MS = 150
+
+IMAGE_DIR = "."
+IMAGE_FILES = (
+    "OLED-1.bin",
+    "OLED-2.bin",
+    "OLED-3.bin",
+    "OLED-4.bin",
+    "OLED-5.bin",
+    "OLED-6.bin",
+    "OLED-7.bin",
+    "OLED-8.bin",
+    "OLED-9.bin",
+    "OLED-10.bin",
+)
+
+# This matches the SSD1309 init sequence from the previous Raspberry Pi test.
+OLED_CONTROLLER = "ssd1309"
+
+# W5500 Ethernet pins on the W5500-EVB-Pico/Pico2.
+ETH_SPI_BUS = 0
+ETH_SPI_BAUDRATE = 2_000_000
+ETH_MISO_PIN = 16
+ETH_CS_PIN = 17
+ETH_SCK_PIN = 18
+ETH_MOSI_PIN = 19
+ETH_RST_PIN = 20
+
+NETWORK_DHCP = True
+
+# Used only when NETWORK_DHCP is False.
+STATIC_IP = "192.168.10.71"
+STATIC_SUBNET = "255.255.255.0"
+STATIC_GATEWAY = "192.168.10.1"
+STATIC_DNS = "192.168.10.1"
+
+MQTT_HOST = "cmcm.local"
+MQTT_PORT = 1883
+MQTT_CLIENT_ID = "pib-alter-display-test"
+MQTT_TOPIC_ROOT = "morseflow/prodigy/cmcm/pib-alter-display"
+MQTT_USERNAME = None
+MQTT_PASSWORD = None
+MQTT_KEEPALIVE_SECONDS = 30
+MQTT_QOS = 0
+
+NETWORK_TIMEOUT_MS = 30000
+HEARTBEAT_INTERVAL_MS = 10000
