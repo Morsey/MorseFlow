@@ -3,6 +3,22 @@
 Use this log for field status notes after upload or bench testing. Record the
 software commit and whether local uncommitted changes were included.
 
+## 2026-09-26
+
+### mb-010
+
+- Status: active board config prepared; DFPlayer Mini tested successfully.
+- Reported by: bench/operator context.
+- Hardware: W5500-EVB-Pico/Pico2 Morseboard with DFPlayer Mini.
+- Role: MP3/audio player; no RJ45 props assigned yet.
+- Active config prepared: `firmware/morseboard/board_configs/mb_010.py` copied
+  to `firmware/morseboard/board_config.py`.
+- MQTT topic root: `morseflow/prodigy/cmcm/mb-010`.
+- Audio test: track 1 play and immediate stop commands confirmed over MQTT.
+- Notes: MQTT remains enabled through the shared default config. The DFPlayer
+  uses dedicated UART0 GPIO0/GPIO1; RFID, candle, and demon knocker port maps
+  remain empty until RJ45 props are assigned.
+
 ## 2026-08-28
 
 ### mb-007
