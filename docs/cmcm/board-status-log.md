@@ -7,17 +7,20 @@ software commit and whether local uncommitted changes were included.
 
 ### mb-010
 
-- Status: active board config prepared; DFPlayer Mini tested successfully.
+- Status: DFPlayer Mini and Hang the Dolls RFID readers tested successfully.
 - Reported by: bench/operator context.
 - Hardware: W5500-EVB-Pico/Pico2 Morseboard with DFPlayer Mini.
-- Role: MP3/audio player; no RJ45 props assigned yet.
+- Role: MP3/audio player and Hang the Dolls RFID readers.
 - Active config prepared: `firmware/morseboard/board_configs/mb_010.py` copied
   to `firmware/morseboard/board_config.py`.
 - MQTT topic root: `morseflow/prodigy/cmcm/mb-010`.
 - Audio test: track 1 play and immediate stop commands confirmed over MQTT.
+- RFID configuration: Doll readers 1-3 assigned to ports 1-3. Signal A is the
+  wrong-tag input and Signal B is the correct-tag input.
+- RFID test: all three doll readers confirmed working on the bench.
 - Notes: MQTT remains enabled through the shared default config. The DFPlayer
-  uses dedicated UART0 GPIO0/GPIO1; RFID, candle, and demon knocker port maps
-  remain empty until RJ45 props are assigned.
+  uses dedicated UART0 GPIO0/GPIO1; candle and demon knocker port maps remain
+  empty.
 
 ## 2026-08-28
 

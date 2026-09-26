@@ -14,7 +14,7 @@ test/upload notes, see `docs/cmcm/board-status-log.md`.
 | `mb-007` | `firmware/morseboard/board_configs/mb_007.py` | W5500-EVB-Pico/Pico2 | Bench/dev | MQTT disabled for no-network test | `morseflow/prodigy/cmcm/mb-007` | Candles on ports 1-3; LEDs light for 5 seconds at power-up; IR trigger turns LED on for 5 seconds. |
 | `mb-008` | `firmware/morseboard/board_configs/mb_008.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-008` | Reserved. |
 | `mb-009` | `firmware/morseboard/board_configs/mb_009.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-009` | Reserved. |
-| `mb-010` | `firmware/morseboard/board_configs/mb_010.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-010` | DFPlayer Mini fitted and tested. |
+| `mb-010` | `firmware/morseboard/board_configs/mb_010.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-010` | DFPlayer Mini; Hang the Dolls RFID readers on ports 1-3. |
 
 ## Connected Props
 
@@ -88,6 +88,17 @@ GPIO0 to DFPlayer RX and GPIO1 from DFPlayer TX. It is controlled through
 `morseflow/prodigy/cmcm/mb-010/cmd/audio`; play-track and immediate-stop
 commands have been verified on the bench. The DFPlayer does not consume an
 RJ45 prop port.
+
+Ports 1-3 are the Hang the Dolls RFID readers. They use the same RFID PIB
+wiring as MB-001: Signal A reports a wrong tag and Signal B reports the correct
+tag. All three readers have been verified on the bench.
+
+| Port | Connected prop | Signal A | Signal B | MQTT role |
+| --- | --- | --- | --- | --- |
+| 1 | Doll 1 RFID reader | Wrong-tag input | Correct-tag input | `doll_1` / reader 1 |
+| 2 | Doll 2 RFID reader | Wrong-tag input | Correct-tag input | `doll_2` / reader 2 |
+| 3 | Doll 3 RFID reader | Wrong-tag input | Correct-tag input | `doll_3` / reader 3 |
+| 4-8 | Not connected | Generic input/output | Generic input/output | Open |
 
 ### MB-003 To MB-006 And MB-008 To MB-009
 

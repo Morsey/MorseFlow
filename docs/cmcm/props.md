@@ -55,6 +55,23 @@ or search for the network.
 | 7 | Unassigned | Unassigned | Switched 5V normally on, 12V always live | TBD | Open |
 | 8 | Unassigned | Unassigned | Switched 5V normally on, 12V always live | TBD | Open |
 
+## MB-010
+
+Ports 1-3 are RFID PIBs for the Hang the Dolls puzzle. Signal A reports a
+wrong tag and Signal B reports the correct tag. The DFPlayer Mini uses its
+dedicated UART pins and does not consume an RJ45 port.
+
+| Port | Signal A | Signal B | Prop Power | Prop / PIB | Status |
+| --- | --- | --- | --- | --- | --- |
+| 1 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Doll 1 RFID reader | Bench tested |
+| 2 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Doll 2 RFID reader | Bench tested |
+| 3 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Doll 3 RFID reader | Bench tested |
+| 4 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
+| 5 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
+| 6 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
+| 7 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
+| 8 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
+
 ## Prop Template
 
 ```text
