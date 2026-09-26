@@ -18,20 +18,20 @@ what each Morseboard port physically controls or reports.
 
 ## MB-002
 
-Ports 1-3 are working direct-wired demon knocker props with no PIB
-microcontroller. Ports 6 and 7 were wired for demon knockers 4 and 5 but are
-currently broken and should not be relied on. Signal A drives each solenoid
-output. Signal B drives each NeoPixel data line directly from the Morseboard.
+Ports 1-3 and 6-7 are working direct-wired demon knocker props with no PIB
+microcontroller. Physical ports 4 and 5 are broken and must not be used. Signal
+A drives each solenoid output. Signal B drives each NeoPixel data line directly
+from the Morseboard.
 
 | Port | Signal A | Signal B | Prop Power | Prop / PIB | Status |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 1, no PIB firmware | Bench test |
 | 2 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 2, no PIB firmware | Bench test |
 | 3 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 3, no PIB firmware | Bench test |
-| 4 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
-| 5 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
-| 6 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 4, no PIB firmware | Broken port |
-| 7 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 5, no PIB firmware | Broken port |
+| 4 | Unavailable | Unavailable | Do not use | None | Broken port |
+| 5 | Unavailable | Unavailable | Do not use | None | Broken port |
+| 6 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 4, no PIB firmware | Bench test |
+| 7 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 5, no PIB firmware | Bench test |
 | 8 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
 
 ## MB-007

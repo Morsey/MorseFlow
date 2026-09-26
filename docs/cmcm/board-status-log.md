@@ -22,6 +22,16 @@ software commit and whether local uncommitted changes were included.
   uses dedicated UART0 GPIO0/GPIO1; candle and demon knocker port maps remain
   empty.
 
+### mb-002
+
+- Status: five demon knockers in use and working.
+- Reported by: bench/operator context.
+- Physical port mapping: knockers 1-5 use ports 1, 2, 3, 6, and 7 respectively.
+- Broken ports: physical ports 4 and 5 must not be used.
+- Correction: this supersedes the 2026-08-28 note that incorrectly identified
+  ports 6 and 7 as broken.
+- MQTT topic root: `morseflow/prodigy/cmcm/mb-002`.
+
 ## 2026-08-28
 
 ### mb-007

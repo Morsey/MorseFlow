@@ -6,7 +6,7 @@ test/upload notes, see `docs/cmcm/board-status-log.md`.
 | Board ID | Config | Hardware | Location | IP Mode | MQTT Topic Root | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | `mb-001` | `firmware/morseboard/board_configs/mb_001.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-001` | Candles on ports 1-2; demon seals RFID readers on ports 3-7. |
-| `mb-002` | `firmware/morseboard/board_configs/mb_002.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-002` | Demon knockers on ports 1-3; ports 6 and 7 are broken. |
+| `mb-002` | `firmware/morseboard/board_configs/mb_002.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-002` | Demon knockers on ports 1-3 and 6-7; ports 4 and 5 are broken. |
 | `mb-003` | `firmware/morseboard/board_configs/mb_003.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-003` | Reserved. |
 | `mb-004` | `firmware/morseboard/board_configs/mb_004.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-004` | Reserved. |
 | `mb-005` | `firmware/morseboard/board_configs/mb_005.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-005` | Reserved. |
@@ -47,17 +47,17 @@ MB-002 is the demon knocker output board. Its active config is
 | 1 | Demon knocker 1 | Solenoid output | NeoPixel data output | `demon_knocker_1` / knocker 1 / LED 1 | RGB pixel order |
 | 2 | Demon knocker 2 | Solenoid output | NeoPixel data output | `demon_knocker_2` / knocker 2 / LED 2 | RGB pixel order |
 | 3 | Demon knocker 3 | Solenoid output | NeoPixel data output | `demon_knocker_3` / knocker 3 / LED 3 | RGB pixel order |
-| 4 | Not connected | Generic output | Generic output | Open | Reserved |
-| 5 | Not connected | Generic output | Generic output | Open | Reserved |
-| 6 | Demon knocker 4 | Solenoid output | NeoPixel data output | `demon_knocker_4` / knocker 4 / LED 4 | Broken port; do not rely on this output |
-| 7 | Demon knocker 5 | Solenoid output | NeoPixel data output | `demon_knocker_5` / knocker 5 / LED 5 | Broken port; do not rely on this output |
+| 4 | Not connected | Unavailable | Unavailable | Open | Broken port; do not use |
+| 5 | Not connected | Unavailable | Unavailable | Open | Broken port; do not use |
+| 6 | Demon knocker 4 | Solenoid output | NeoPixel data output | `demon_knocker_4` / knocker 4 / LED 4 | GRB pixel order |
+| 7 | Demon knocker 5 | Solenoid output | NeoPixel data output | `demon_knocker_5` / knocker 5 / LED 5 | GRB pixel order |
 | 8 | Not connected | Generic output | Generic output | Open | Reserved |
 
 Use the logical MQTT targets `cmd/demon_knocker/<1-5>` and
 `cmd/demon_led/<1-5>` from Node-RED. The firmware maps those logical numbers to
-the physical ports above, but mb-002 ports 6 and 7 are currently broken, so
-logical knockers/LEDs 4 and 5 should be treated as unavailable on this board
-until they are moved or repaired.
+the physical ports above. Physical ports 4 and 5 are broken and must not be
+used; logical knockers/LEDs 4 and 5 are available through physical ports 6 and
+7.
 
 ### MB-007
 
