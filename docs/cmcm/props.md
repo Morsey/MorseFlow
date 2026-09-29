@@ -5,6 +5,10 @@ what each Morseboard port physically controls or reports.
 
 ## MB-001
 
+The candle outputs on ports 1-2 start off and are controlled over MQTT. Their
+IR input changes publish candle events without switching the outputs locally.
+The RFID behavior on ports 3-7 is unchanged.
+
 | Port | Signal A | Signal B | Prop Power | Prop / PIB | Status |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Candle LED output | IR lit-detected input | Switched 5V normally on, 12V always live | Candle 1 | Bench test |

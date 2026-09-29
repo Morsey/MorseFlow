@@ -120,6 +120,6 @@ Alternatively, use MicroPico Run on `app.py` from VS Code.
 
 If you see `wiznet5k_send_ethernet: fatal error -5`, the W5500 driver is
 reporting a network send failure. Check the Ethernet cable/link lights, confirm
-the MQTT broker IP in `config.py`, and confirm the broker is reachable on the
+the MQTT broker address in `config.py`, and confirm the broker is reachable on the
 wired network. For bench testing without Ethernet/MQTT, set
 `MQTT_ENABLED = False` in `config.py`.

@@ -19,6 +19,21 @@ software commit and whether local uncommitted changes were included.
 - Active config prepared: `firmware/morseboard/board_configs/mb_007.py` copied
   to `firmware/morseboard/board_config.py`.
 
+### mb-001
+
+- Status: prepared for networked candle control.
+- Reported by: bench/operator context.
+- Hardware: W5500-EVB-Pico/Pico2 Morseboard.
+- Role: candle IR inputs and outputs on ports 1-2; demon seal RFID readers on
+  ports 3-7.
+- MQTT topic root: `morseflow/prodigy/cmcm/mb-001`.
+- MQTT broker: production hostname `cmcm.local`.
+- Candle behavior: IR changes publish events without switching outputs locally;
+  outputs start off and remain under MQTT control.
+- RFID behavior: unchanged.
+- Active config prepared: `firmware/morseboard/board_configs/mb_001.py` copied
+  to `firmware/morseboard/board_config.py`.
+
 ## 2026-09-26
 
 ### mb-010

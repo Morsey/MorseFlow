@@ -74,8 +74,8 @@ The retained board `state` payload also includes:
 MB1 ports 1 and 2 are passive candle PIBs. Signal A drives the candle LED.
 Signal B reads the active-low IR lit-detected signal.
 
-When a candle sensor triggers, the Morseboard turns that candle output on for
-`CANDLE_ON_TIME_MS` and publishes:
+When a candle sensor changes state, MB1 publishes without switching the candle
+output locally:
 
 ```text
 morseflow/prodigy/cmcm/mb-001/event
@@ -84,23 +84,23 @@ morseflow/prodigy/cmcm/mb-001/event
 Example candle event:
 
 ```json
-{"board_id": "mb-001", "event": "candle", "data": {"port": 1, "candle_on": true, "sensor_active": true, "prop": "candle_1", "candle": 1, "armed_for_trigger": false, "candles": [{"port": 1, "candle_on": true, "sensor_active": true, "prop": "candle_1", "candle": 1}, {"port": 2, "candle_on": false, "sensor_active": false, "prop": "candle_2", "candle": 2}]}}
+{"board_id": "mb-001", "event": "candle", "data": {"port": 1, "candle_on": false, "sensor_active": true, "prop": "candle_1", "candle": 1, "armed_for_trigger": false, "candles": [{"port": 1, "candle_on": false, "sensor_active": true, "prop": "candle_1", "candle": 1}, {"port": 2, "candle_on": false, "sensor_active": false, "prop": "candle_2", "candle": 2}]}}
 ```
 
 The retained board `state` payload includes a top-level `candles` list with the
 current state of all configured candle ports.
 
-MB7 ports 1-3 publish the same candle events to:
+MB7 ports 1-3 use the same behavior and publish to:
 
 ```text
 morseflow/prodigy/cmcm/mb-007/event
 ```
 
-MB7 does not switch candle outputs automatically when an IR sensor changes.
-Control each candle using its physical port topic. For candle 1:
+MB1 and MB7 do not switch candle outputs automatically when an IR sensor
+changes. Control each candle using its physical port topic. For MB1 candle 1:
 
 ```text
-morseflow/prodigy/cmcm/mb-007/cmd/port/1
+morseflow/prodigy/cmcm/mb-001/cmd/port/1
 ```
 
 Switch it on until an explicit off command:

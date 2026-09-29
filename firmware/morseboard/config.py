@@ -8,8 +8,7 @@ BOOT_REPL_PAUSE_MS = 5000
 BOOT_LED_TOGGLE_MS = 50
 APP_LED_TOGGLE_MS = 500
 
-# Bench LAN broker. Replace with the production broker address before deployment.
-MQTT_HOST = "192.168.0.19"
+MQTT_HOST = "cmcm.local"
 MQTT_PORT = 1883
 MQTT_USERNAME = None
 MQTT_PASSWORD = None
