@@ -11,7 +11,7 @@ test/upload notes, see `docs/cmcm/board-status-log.md`.
 | `mb-004` | `firmware/morseboard/board_configs/mb_004.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-004` | Reserved. |
 | `mb-005` | `firmware/morseboard/board_configs/mb_005.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-005` | Reserved. |
 | `mb-006` | `firmware/morseboard/board_configs/mb_006.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-006` | Reserved. |
-| `mb-007` | `firmware/morseboard/board_configs/mb_007.py` | W5500-EVB-Pico/Pico2 | Bench/dev | MQTT disabled for no-network test | `morseflow/prodigy/cmcm/mb-007` | Candles on ports 1-3; LEDs light for 5 seconds at power-up; IR trigger turns LED on for 5 seconds. |
+| `mb-007` | `firmware/morseboard/board_configs/mb_007.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-007` | Candles on ports 1-3; IR changes publish over MQTT; outputs are controlled over MQTT. |
 | `mb-008` | `firmware/morseboard/board_configs/mb_008.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-008` | Reserved. |
 | `mb-009` | `firmware/morseboard/board_configs/mb_009.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-009` | Reserved. |
 | `mb-010` | `firmware/morseboard/board_configs/mb_010.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-010` | DFPlayer Mini; Hang the Dolls RFID readers on ports 1-3. |
@@ -63,12 +63,9 @@ used; logical knockers/LEDs 4 and 5 are available through physical ports 6 and
 
 MB-007 is a candle input/output board using the same candle hardware pattern as
 MB-001. Its active config is `firmware/morseboard/board_configs/mb_007.py`.
-It is currently configured for no-network bench testing with `MQTT_ENABLED =
-False`: when a candle IR receiver triggers once, the matching candle LED turns
-on for 5 seconds. For this test mode, an active IR input is enough to trigger
-the LED; it does not require a clean idle-to-active edge. Each configured candle
-LED also lights for 5 seconds at power-up. With MQTT disabled, the firmware does
-not start the Ethernet service or search for the network.
+MQTT is enabled. IR input changes publish candle events but do not switch the
+matching candle output locally. Candle outputs start off and remain under MQTT
+control until explicitly changed.
 
 | Port | Connected prop | Signal A | Signal B | MQTT role |
 | --- | --- | --- | --- | --- |

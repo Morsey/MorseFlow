@@ -17,6 +17,8 @@ RFID_INPUT_PORTS = {
 
 # Candle ports use Signal A as the candle LED output and Signal B as the
 # active-low IR detection input.
+# Set CANDLE_AUTO_TRIGGER_ENABLED = False to report IR changes without locally
+# switching the candle output.
 CANDLE_PORTS = {
     # 1: {
     #     "prop": "candle_1",

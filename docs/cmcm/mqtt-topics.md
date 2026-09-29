@@ -90,6 +90,37 @@ Example candle event:
 The retained board `state` payload includes a top-level `candles` list with the
 current state of all configured candle ports.
 
+MB7 ports 1-3 publish the same candle events to:
+
+```text
+morseflow/prodigy/cmcm/mb-007/event
+```
+
+MB7 does not switch candle outputs automatically when an IR sensor changes.
+Control each candle using its physical port topic. For candle 1:
+
+```text
+morseflow/prodigy/cmcm/mb-007/cmd/port/1
+```
+
+Switch it on until an explicit off command:
+
+```json
+{"on": true}
+```
+
+Switch it off:
+
+```json
+{"off": true}
+```
+
+An optional duration keeps timed operation available:
+
+```json
+{"on": true, "duration_ms": 5000}
+```
+
 ## Demon Knocker Commands
 
 MB2 ports 1-3 and 6-7 are direct-wired demon knockers. Signal A drives each

@@ -216,9 +216,11 @@ class CandlePort:
     def update(self, now_ms):
         changed = False
         sensor_active = self._sensor_active()
+        auto_trigger_enabled = getattr(config, "CANDLE_AUTO_TRIGGER_ENABLED", True)
 
         if (
-            getattr(config, "CANDLE_TRIGGER_ON_ACTIVE", False)
+            auto_trigger_enabled
+            and getattr(config, "CANDLE_TRIGGER_ON_ACTIVE", False)
             and sensor_active
             and not self.candle_is_on
         ):
@@ -234,10 +236,11 @@ class CandlePort:
             if sensor_active:
                 if self.armed_for_trigger:
                     self.armed_for_trigger = False
-                    self.turn_on(now_ms, config.CANDLE_ON_TIME_MS)
+                    if auto_trigger_enabled:
+                        self.turn_on(now_ms, config.CANDLE_ON_TIME_MS)
                     log(
                         "port{}".format(self.port_number),
-                        "candle sensor triggered",
+                        "candle sensor active",
                     )
             else:
                 self.armed_for_trigger = True
@@ -256,9 +259,12 @@ class CandlePort:
 
         return changed
 
-    def turn_on(self, now_ms, duration_ms):
+    def turn_on(self, now_ms, duration_ms=None):
         self.candle.value(1)
-        self.candle_deadline = ticks_add(now_ms, max(0, int(duration_ms)))
+        if duration_ms is None:
+            self.candle_deadline = None
+        else:
+            self.candle_deadline = ticks_add(now_ms, max(0, int(duration_ms)))
         self.candle_is_on = True
 
     def turn_off(self):
@@ -272,8 +278,7 @@ class CandlePort:
             self.turn_off()
             return
         if command.get("on"):
-            duration_ms = command.get("duration_ms", config.CANDLE_ON_TIME_MS)
-            self.turn_on(now_ms, duration_ms)
+            self.turn_on(now_ms, command.get("duration_ms"))
 
     def state(self):
         return {

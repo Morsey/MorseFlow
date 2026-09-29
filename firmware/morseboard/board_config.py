@@ -1,25 +1,22 @@
-BOARD_ID = "mb-010"
+BOARD_ID = "mb-007"
+MQTT_ENABLED = True
+CANDLE_STARTUP_PULSE_MS = 0
+CANDLE_AUTO_TRIGGER_ENABLED = False
+CANDLE_TRIGGER_ON_ACTIVE = False
 
-# Hang the Dolls RFID PIBs: Signal A = wrong tag, Signal B = correct tag.
-RFID_INPUT_PORTS = {
+CANDLE_PORTS = {
     1: {
-        "prop": "doll_1",
-        "reader": 1,
-        "correct_signal": "b",
-        "wrong_signal": "a",
+        "prop": "candle_1",
+        "candle": 1,
     },
     2: {
-        "prop": "doll_2",
-        "reader": 2,
-        "correct_signal": "b",
-        "wrong_signal": "a",
+        "prop": "candle_2",
+        "candle": 2,
     },
     3: {
-        "prop": "doll_3",
-        "reader": 3,
-        "correct_signal": "b",
-        "wrong_signal": "a",
+        "prop": "candle_3",
+        "candle": 3,
     },
 }
-CANDLE_PORTS = {}
-DEMON_KNOCKER_PORTS = {}
+
+RFID_INPUT_PORTS = {}

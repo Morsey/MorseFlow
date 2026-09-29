@@ -3,6 +3,22 @@
 Use this log for field status notes after upload or bench testing. Record the
 software commit and whether local uncommitted changes were included.
 
+## 2026-09-29
+
+### mb-007
+
+- Status: prepared for networked candle control.
+- Reported by: bench/operator context.
+- Hardware: W5500-EVB-Pico/Pico2 Morseboard.
+- Role: candle IR inputs and candle outputs on ports 1-3.
+- MQTT topic root: `morseflow/prodigy/cmcm/mb-007`.
+- IR behavior: sensor changes publish candle events and do not switch outputs
+  locally.
+- Output behavior: candles start off; MQTT `on` remains on until `off`, with an
+  optional `duration_ms` for a timed command.
+- Active config prepared: `firmware/morseboard/board_configs/mb_007.py` copied
+  to `firmware/morseboard/board_config.py`.
+
 ## 2026-09-26
 
 ### mb-010

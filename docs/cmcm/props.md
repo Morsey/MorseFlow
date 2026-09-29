@@ -37,12 +37,10 @@ from the Morseboard.
 ## MB-007
 
 Ports 1-3 use the same candle hardware pattern as MB-001. Signal A drives the
-candle LED output. Signal B reads the IR lit-detected input. For the current
-no-network test, each LED lights for 5 seconds at power-up, and one IR
-trigger turns the matching candle LED on for 5 seconds. An active IR input is
-enough to trigger the LED in this test mode; it does not require a clean
-idle-to-active edge. MQTT is disabled, so the firmware does not start Ethernet
-or search for the network.
+candle LED output. Signal B reads the IR lit-detected input. Outputs start off
+and do not respond locally to the IR sensors. IR state changes are published as
+MQTT candle events, and Node-RED controls each output through its port command
+topic.
 
 | Port | Signal A | Signal B | Prop Power | Prop / PIB | Status |
 | --- | --- | --- | --- | --- | --- |
