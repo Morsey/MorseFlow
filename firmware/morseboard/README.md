@@ -25,6 +25,8 @@ Upload these files from this folder to the board filesystem:
 - `messages.py`
 - `dfplayer.py`
 - `hardware.py`
+- `bookshelf.py`
+- `doorknob.py`
 - `ethernet.py`
 - `mqtt_client.py`
 - `mqtt_service.py`
@@ -89,6 +91,13 @@ app has started, press Ctrl-C to interrupt the running app and return to the
 REPL.
 
 Set `DEBUG_REPL = False` in `config.py` to silence MorseFlow debug output.
+
+For a board that must run without a network, set `MQTT_ENABLED = False`. This
+also prevents Ethernet startup. Set `REPL_EVENT_LOGGING = True` to print each
+hardware event to the USB REPL while the normal local hardware loops continue.
+When a doorknob puzzle is configured, a compact status line with the current
+angle, target, distance, actual movement direction, required direction, and
+combination progress is printed every `DOORKNOB_REPL_INTERVAL_MS` in this mode.
 
 ## Debug Logs
 

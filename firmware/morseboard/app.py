@@ -32,6 +32,7 @@ def main():
     # Keep this loop free of blocking sleeps so MQTT and timed outputs stay live.
     next_error_log_ms = 0
     next_network_wait_log_ms = 0
+    next_doorknob_repl_ms = 0
     was_network_ready = False
     while True:
         now_ms = ticks_ms()
@@ -60,7 +61,30 @@ def main():
 
             hardware.update(now_ms)
 
+            if (
+                getattr(config, "REPL_EVENT_LOGGING", False)
+                and hardware.doorknob is not None
+                and ticks_diff(now_ms, next_doorknob_repl_ms) >= 0
+            ):
+                log("knob", hardware.doorknob.repl_status())
+                next_doorknob_repl_ms = ticks_add(
+                    now_ms,
+                    getattr(config, "DOORKNOB_REPL_INTERVAL_MS", 250),
+                )
+
             for event_type, event_data in hardware.consume_events():
+                if getattr(config, "REPL_EVENT_LOGGING", False):
+                    if event_type == "doorknob":
+                        log(
+                            "knob",
+                            "event={} step={}/{}".format(
+                                event_data.get("reason"),
+                                event_data.get("step_index"),
+                                event_data.get("step_count"),
+                            ),
+                        )
+                    else:
+                        log("event", "{} {}".format(event_type, event_data))
                 if mqtt is not None:
                     mqtt.publish_event(event_type, event_data)
 

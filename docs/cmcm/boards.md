@@ -10,11 +10,11 @@ test/upload notes, see `docs/cmcm/board-status-log.md`.
 | `mb-003` | `firmware/morseboard/board_configs/mb_003.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-003` | Reserved. |
 | `mb-004` | `firmware/morseboard/board_configs/mb_004.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-004` | Reserved. |
 | `mb-005` | `firmware/morseboard/board_configs/mb_005.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-005` | Reserved. |
-| `mb-006` | `firmware/morseboard/board_configs/mb_006.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-006` | Reserved. |
+| `mb-006` | `firmware/morseboard/board_configs/mb_006.py` | Special screw-terminal W5500-EVB-Pico/Pico2 | Installed/networked | DHCP | `morseflow/prodigy/cmcm/mb-006` | Bookshelf on GPIO0-GPIO8; AS5600 safe dial on GPIO10/GPIO11. |
 | `mb-007` | `firmware/morseboard/board_configs/mb_007.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-007` | Candles on ports 1-3; IR changes publish over MQTT; outputs are controlled over MQTT. |
 | `mb-008` | `firmware/morseboard/board_configs/mb_008.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-008` | Reserved. |
 | `mb-009` | `firmware/morseboard/board_configs/mb_009.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-009` | Reserved. |
-| `mb-010` | `firmware/morseboard/board_configs/mb_010.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-010` | DFPlayer Mini; Hang the Dolls RFID readers on ports 1-3. |
+| `mb-010` | `firmware/morseboard/board_configs/mb_010.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-010` | DFPlayer Mini; Hang the Dolls RFID readers on ports 1-3; Cross on Symbols sensor 2 on port 4. |
 
 ## Connected Props
 
@@ -80,6 +80,30 @@ control until explicitly changed.
 | 7 | Not connected | Unassigned | Unassigned | Open |
 | 8 | Not connected | Unassigned | Unassigned | Open |
 
+### MB-006
+
+MB-006 reads the ten-book bookshelf directly as a 5-column by 4-row reed-switch
+matrix. GPIO0-GPIO4 select the five positions shared between the shelves.
+GPIO5/GPIO6 read the out/in positions for Books 1-5, and GPIO7/GPIO8 read the
+out/in positions for Books 6-10. The scanner discharges the row circuitry
+before each reading because the input board otherwise retains a high level
+after a switch opens.
+
+The physical book order is reversed across GPIO0-GPIO4. Those columns map to
+Books 5/10, 4/9, 3/8, 2/7, and 1/6 respectively.
+
+The bookshelf owns GPIO0-GPIO8, so Morseboard ports 1-3 and Signal A of port 4
+are reserved on MB-006. The firmware reserves all of ports 1-4 to prevent
+conflicting output initialization or commands. The DFPlayer is disabled because
+the matrix uses its normal UART0 pins GPIO0/GPIO1.
+
+MB-006 is the special screw-terminal Morseboard rather than the paired-port
+version. An AS5600 magnetic angle sensor for the doorknob safe puzzle uses
+I2C1 on GPIO10 SDA and GPIO11 SCL. The safe combination is monitored locally;
+only progress, reset, unlock, configuration, and sensor-health events are sent
+over MQTT. GPIO15 is left unclaimed because this board exposes it as a screw
+terminal instead of using it as the normal switched-5V control.
+
 ### MB-010
 
 MB-010 has a DFPlayer Mini connected to the board's dedicated UART0 pins:
@@ -92,14 +116,19 @@ Ports 1-3 are the Hang the Dolls RFID readers. They use the same RFID PIB
 wiring as MB-001: Signal A reports a wrong tag and Signal B reports the correct
 tag. All three readers have been verified on the bench.
 
+Port 4 is Cross on Symbols sensor 2, a dry-contact reed switch. Signal B uses
+an internal pull-up and becomes active when the switch closes to GND. Signal A
+is unused. Input changes are debounced for 50 ms and published over MQTT.
+
 | Port | Connected prop | Signal A | Signal B | MQTT role |
 | --- | --- | --- | --- | --- |
 | 1 | Doll 1 RFID reader | Wrong-tag input | Correct-tag input | `doll_1` / reader 1 |
 | 2 | Doll 2 RFID reader | Wrong-tag input | Correct-tag input | `doll_2` / reader 2 |
 | 3 | Doll 3 RFID reader | Wrong-tag input | Correct-tag input | `doll_3` / reader 3 |
-| 4-8 | Not connected | Generic input/output | Generic input/output | Open |
+| 4 | Cross on Symbols sensor 2 | Unused | Reed-switch input, active-low | `cross_on_symbols_2` / sensor 2 |
+| 5-8 | Not connected | Generic input/output | Generic input/output | Open |
 
-### MB-003 To MB-006 And MB-008 To MB-009
+### MB-003 To MB-005 And MB-008 To MB-009
 
 These boards are reserved. No connected props are currently recorded in their
 board config files.

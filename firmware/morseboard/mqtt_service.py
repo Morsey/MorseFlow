@@ -161,6 +161,10 @@ class MQTTService:
             self.hardware.set_relay(bool(command.get("enabled")))
         elif suffix == "cmd/audio":
             self.hardware.command_audio(command)
+        elif suffix == "cmd/doorknob/reset":
+            self.hardware.reset_doorknob(now_ms)
+        elif suffix == "cmd/doorknob/config":
+            self.hardware.configure_doorknob(command, now_ms)
         elif suffix == "cmd/sequence":
             self.hardware.command_sequence(command, now_ms)
         elif suffix == "cmd/status":

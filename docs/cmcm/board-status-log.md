@@ -3,6 +3,61 @@
 Use this log for field status notes after upload or bench testing. Record the
 software commit and whether local uncommitted changes were included.
 
+## 2026-10-29
+
+### mb-006
+
+- Status: bookshelf and AS5600 doorknob testing complete; active config
+  prepared for network installation.
+- Network: Ethernet and MQTT enabled using DHCP and broker `cmcm.local`.
+- MQTT topic root: `morseflow/prodigy/cmcm/mb-006`.
+- REPL test event/status logging disabled for normal operation.
+- Bookshelf physical numbering confirmed: GPIO0-GPIO4 map to Books 5/10,
+  4/9, 3/8, 2/7, and 1/6.
+- Active config: `firmware/morseboard/board_configs/mb_006.py` copied to
+  `firmware/morseboard/board_config.py`.
+
+## 2026-10-24
+
+### mb-006
+
+- Status: AS5600 doorknob safe-dial support prepared for installation on the
+  special screw-terminal board; awaiting sensor and full-framework bench test.
+- Wiring: I2C1 SDA GPIO10, SCL GPIO11, AS5600 address `0x36`.
+- Behavior: angle sampled locally every 50 ms; no continuous angle MQTT events.
+- Puzzle: configurable direction, target angle, and minimum travel for each
+  step; arriving at a target from the wrong direction resets progress, while
+  wrong-way movement elsewhere is tolerated; success is published through
+  MQTT without operating a local output.
+- Configuration: runtime or persistent updates through
+  `cmd/doorknob/config`; persistent settings stored in
+  `doorknob_config.json`.
+- Special-board handling: normal GPIO15 switched-5V control and DFPlayer UART
+  are disabled in MB-006 config.
+- Test mode: MQTT and Ethernet startup disabled; bookshelf and doorknob events
+  are printed as structured messages on the USB REPL.
+- Doorknob test display: angle, current target, required direction, combination
+  step, accumulated travel, and solved state printed every 250 ms; targets have
+  15 degrees of direction-aware overrun allowance.
+
+## 2026-10-19
+
+### mb-006
+
+- Status: bookshelf firmware prepared for installation; full framework build
+  awaiting on-board verification.
+- Hardware: W5500-EVB-Pico/Pico2 Morseboard.
+- Role: ten-book, twenty-reed-switch bookshelf matrix on GPIO0-GPIO8.
+- Matrix test: all book in/out sensors confirmed working with the standalone
+  scanner.
+- Scan behavior: non-blocking 10 ms discharge and 10 ms settle phases per
+  column, with three-scan debounce.
+- MQTT topic root: `morseflow/prodigy/cmcm/mb-006`.
+- Active config prepared: `firmware/morseboard/board_configs/mb_006.py` copied
+  to `firmware/morseboard/board_config.py`.
+- GPIO ownership: ports 1-4 reserved; DFPlayer disabled because GPIO0/GPIO1
+  are used by the matrix.
+
 ## 2026-09-29
 
 ### mb-007
@@ -32,6 +87,17 @@ software commit and whether local uncommitted changes were included.
   outputs start off and remain under MQTT control.
 - RFID behavior: unchanged.
 - Active config prepared: `firmware/morseboard/board_configs/mb_001.py` copied
+  to `firmware/morseboard/board_config.py`.
+
+### mb-010
+
+- Status: Cross on Symbols sensor 2 configured on port 4; awaiting bench test.
+- Reported by: bench/operator context.
+- Physical input: port 4 Signal B, internal pull-up, active-low reed switch to
+  GND; Signal A unused.
+- MQTT event: `switch` on `morseflow/prodigy/cmcm/mb-010/event`.
+- Input behavior: 50 ms debounce; closed is active and open is inactive.
+- Active config prepared: `firmware/morseboard/board_configs/mb_010.py` copied
   to `firmware/morseboard/board_config.py`.
 
 ## 2026-09-26

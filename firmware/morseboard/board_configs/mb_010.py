@@ -21,5 +21,15 @@ RFID_INPUT_PORTS = {
         "wrong_signal": "a",
     },
 }
+SWITCH_INPUT_PORTS = {
+    4: {
+        "prop": "cross_on_symbols_2",
+        "sensor": 2,
+        "signal": "b",
+        "active_value": 0,
+        "pull": "up",
+        "debounce_ms": 50,
+    },
+}
 CANDLE_PORTS = {}
 DEMON_KNOCKER_PORTS = {}

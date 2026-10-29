@@ -2,7 +2,9 @@ from machine import Pin
 from time import ticks_add, ticks_diff, ticks_ms
 
 import config
+from bookshelf import BookshelfMatrix
 from debug import log
+from doorknob import DoorKnobPuzzle
 import pins
 from dfplayer import DFPlayer
 
@@ -105,6 +107,27 @@ class PropPort:
         self.test_deadline = None
 
 
+class ReservedPort:
+    def __init__(self, port_number, owner):
+        self.port_number = port_number
+        self.owner = owner
+
+    def update(self, now_ms):
+        return False
+
+    def state(self):
+        return {"mode": "reserved", "owner": self.owner}
+
+    def safe_defaults(self):
+        pass
+
+    def command(self, command, now_ms):
+        log(
+            "port{}".format(self.port_number),
+            "ignored command; reserved for {}".format(self.owner),
+        )
+
+
 class RFIDInputPort:
     def __init__(self, port_number, signal_a_pin, signal_b_pin, metadata=None):
         self.port_number = port_number
@@ -192,6 +215,100 @@ class RFIDInputPort:
         if correct and wrong:
             return "invalid"
         return "no_card"
+
+
+class SwitchInputPort:
+    def __init__(self, port_number, signal_a_pin, signal_b_pin, metadata=None):
+        self.port_number = port_number
+        self.metadata = metadata or {}
+        self.signal = str(self.metadata.get("signal", "a")).lower()
+        if self.signal not in ("a", "b"):
+            self.signal = "a"
+        pin_number = signal_a_pin if self.signal == "a" else signal_b_pin
+        self.active_value = 1 if self.metadata.get("active_value", 0) else 0
+        self.debounce_ms = max(
+            0,
+            int(
+                self.metadata.get(
+                    "debounce_ms",
+                    getattr(config, "SWITCH_DEBOUNCE_MS", 50),
+                )
+            ),
+        )
+        pull_name = str(self.metadata.get("pull", "up")).lower()
+        if pull_name == "up":
+            self.input = Pin(pin_number, Pin.IN, Pin.PULL_UP)
+        elif pull_name == "down":
+            self.input = Pin(pin_number, Pin.IN, Pin.PULL_DOWN)
+        else:
+            self.input = Pin(pin_number, Pin.IN)
+        self.raw_active = self._read_active()
+        self.current_active = self.raw_active
+        self.previous_active = self.current_active
+        self.raw_changed_ms = ticks_ms()
+        log(
+            "port{}".format(self.port_number),
+            "switch input initialized active={}".format(int(self.current_active)),
+        )
+
+    def update(self, now_ms):
+        active = self._read_active()
+        if active != self.raw_active:
+            self.raw_active = active
+            self.raw_changed_ms = now_ms
+            return False
+        if active == self.current_active:
+            return False
+        if ticks_diff(now_ms, self.raw_changed_ms) < self.debounce_ms:
+            return False
+        self.previous_active = self.current_active
+        self.current_active = active
+        log(
+            "port{}".format(self.port_number),
+            "switch input active={}".format(int(self.current_active)),
+        )
+        return True
+
+    def state(self):
+        data = self.switch_status()
+        data.update({
+            "mode": "switch_input",
+            "raw": bool(self.input.value()),
+            "signal": self.signal,
+            "active_value": self.active_value,
+        })
+        return data
+
+    def switch_status(self):
+        data = {
+            "port": self.port_number,
+            "active": self.current_active,
+        }
+        prop = self.metadata.get("prop")
+        sensor = self.metadata.get("sensor")
+        if prop is not None:
+            data["prop"] = prop
+        if sensor is not None:
+            data["sensor"] = sensor
+        return data
+
+    def event(self):
+        data = self.switch_status()
+        data["previous"] = self.previous_active
+        return data
+
+    def safe_defaults(self):
+        # Input ports are never driven by the Morseboard.
+        pass
+
+    def command(self, command, now_ms):
+        log(
+            "port{}".format(self.port_number),
+            "ignored command for switch input {}".format(command),
+        )
+
+    def _read_active(self):
+        return self.input.value() == self.active_value
 
 
 class CandlePort:
@@ -490,9 +607,20 @@ class DemonKnockerPort:
 
 class MorseboardHardware:
     def __init__(self):
-        self.power_5v = Pin(pins.PROP_POWER_ENABLE, Pin.OUT)
+        self.power_5v = (
+            Pin(pins.PROP_POWER_ENABLE, Pin.OUT)
+            if getattr(config, "PROP_POWER_CONTROL_ENABLED", True)
+            else None
+        )
         self.relay = Pin(pins.OPTIONAL_RELAY, Pin.OUT)
-        self.dfplayer = DFPlayer()
+        bookshelf_config = getattr(config, "BOOKSHELF_MATRIX", None)
+        self.bookshelf = BookshelfMatrix(bookshelf_config) if bookshelf_config else None
+        doorknob_config = getattr(config, "DOORKNOB_PUZZLE", None)
+        self.doorknob = DoorKnobPuzzle(doorknob_config) if doorknob_config else None
+        bookshelf_pins = self.bookshelf.claimed_pins() if self.bookshelf else set()
+        doorknob_pins = self.doorknob.claimed_pins() if self.doorknob else set()
+        claimed_pins = bookshelf_pins | doorknob_pins
+        self.dfplayer = DFPlayer() if getattr(config, "DFPLAYER_ENABLED", True) else None
         self.ports = []
         self.events = []
         self.dirty = True
@@ -504,13 +632,22 @@ class MorseboardHardware:
         self.sequence_deadline = None
         self.sequence_current_port = None
         self.sequence_current_step = None
-
-        self.power_5v.value(1 if config.PROP_5V_ENABLED_AT_BOOT else 0)
+        if self.power_5v is not None:
+            self.power_5v.value(1 if config.PROP_5V_ENABLED_AT_BOOT else 0)
         self.relay.value(1 if config.RELAY_ENABLED_AT_BOOT else 0)
 
         for index, pair in enumerate(pins.PORT_PINS):
             port_number = index + 1
+            if claimed_pins.intersection(pair):
+                owners = []
+                if bookshelf_pins.intersection(pair):
+                    owners.append("bookshelf")
+                if doorknob_pins.intersection(pair):
+                    owners.append("door_knob")
+                self.ports.append(ReservedPort(port_number, "+".join(owners)))
+                continue
             rfid_metadata = config.RFID_INPUT_PORTS.get(port_number)
+            switch_metadata = config.SWITCH_INPUT_PORTS.get(port_number)
             candle_metadata = config.CANDLE_PORTS.get(port_number)
             demon_knocker_metadata = config.DEMON_KNOCKER_PORTS.get(port_number)
             if candle_metadata is not None:
@@ -540,6 +677,15 @@ class MorseboardHardware:
                         metadata=rfid_metadata,
                     )
                 )
+            elif switch_metadata is not None:
+                self.ports.append(
+                    SwitchInputPort(
+                        port_number,
+                        pair[0],
+                        pair[1],
+                        metadata=switch_metadata,
+                    )
+                )
             else:
                 self.ports.append(
                     PropPort(
@@ -553,6 +699,12 @@ class MorseboardHardware:
     def _is_rfid_input(self, port):
         return isinstance(port, RFIDInputPort)
 
+    def _is_reserved(self, port):
+        return isinstance(port, ReservedPort)
+
+    def _is_switch_input(self, port):
+        return isinstance(port, SwitchInputPort)
+
     def _is_candle(self, port):
         return isinstance(port, CandlePort)
 
@@ -560,6 +712,9 @@ class MorseboardHardware:
         return isinstance(port, DemonKnockerPort)
 
     def set_power(self, enabled):
+        if self.power_5v is None:
+            log("hardware", "ignored switched 5V command; control disabled")
+            return
         self.power_5v.value(1 if enabled else 0)
         self.dirty = True
         log("hardware", "switched 5V set {}".format(int(bool(enabled))))
@@ -571,11 +726,17 @@ class MorseboardHardware:
 
     def command_port(self, port_number, command, now_ms):
         port = self.ports[int(port_number) - 1]
+        if self._is_reserved(port):
+            port.command(command, now_ms)
+            return
         if command.get("test_pins") and hasattr(port, "start_pin_test"):
             port.start_pin_test(now_ms, command.get("duration_ms", 500))
             self.dirty = True
             return
         if self._is_rfid_input(port):
+            port.command(command, now_ms)
+            return
+        if self._is_switch_input(port):
             port.command(command, now_ms)
             return
         if self._is_candle(port):
@@ -591,6 +752,9 @@ class MorseboardHardware:
         self.dirty = True
 
     def command_audio(self, command):
+        if self.dfplayer is None:
+            log("audio", "ignored command; DFPlayer disabled")
+            return
         log("audio", "command {}".format(command))
         if "volume" in command:
             self.dfplayer.set_volume(command["volume"])
@@ -598,6 +762,27 @@ class MorseboardHardware:
             self.dfplayer.play_track(command["play_track"])
         if command.get("stop"):
             self.dfplayer.stop()
+
+    def reset_doorknob(self, now_ms):
+        if self.doorknob is None:
+            log("doorknob", "ignored reset; puzzle disabled")
+            return
+        self.events.append(("doorknob", self.doorknob.reset(now_ms)))
+        self.dirty = True
+
+    def configure_doorknob(self, command, now_ms):
+        if self.doorknob is None:
+            log("doorknob", "ignored config; puzzle disabled")
+            return
+        try:
+            event = self.doorknob.update_config(command, now_ms)
+        except Exception as exc:
+            event = self.doorknob.state()
+            event["reason"] = "config_error"
+            event["error"] = repr(exc)
+            log("doorknob", "config rejected {}".format(repr(exc)))
+        self.events.append(("doorknob", event))
+        self.dirty = True
 
     def command_demon_led(self, led_number, command):
         port = self._demon_knocker_by_number(int(led_number))
@@ -743,14 +928,30 @@ class MorseboardHardware:
     def update(self, now_ms):
         changed = False
         changed_rfid_ports = []
+        changed_switch_ports = []
         changed_candle_ports = []
         for port in self.ports:
             if port.update(now_ms):
                 changed = True
                 if self._is_rfid_input(port):
                     changed_rfid_ports.append(port)
+                elif self._is_switch_input(port):
+                    changed_switch_ports.append(port)
                 elif self._is_candle(port):
                     changed_candle_ports.append(port)
+        if self.bookshelf is not None:
+            bookshelf_changed, bookshelf_events = self.bookshelf.update(now_ms)
+            if bookshelf_changed:
+                changed = True
+            for event in bookshelf_events:
+                event["books"] = self.bookshelf.book_statuses()
+                self.events.append(("bookshelf", event))
+        if self.doorknob is not None:
+            doorknob_changed, doorknob_events = self.doorknob.update(now_ms)
+            if doorknob_changed:
+                changed = True
+            for event in doorknob_events:
+                self.events.append(("doorknob", event))
         if self._update_sequence(now_ms):
             changed = True
         for port in changed_rfid_ports:
@@ -758,6 +959,10 @@ class MorseboardHardware:
             event["readers"] = self.rfid_reader_statuses()
             event["all_correct"] = self.all_rfid_readers_correct()
             self.events.append(("rfid", event))
+        for port in changed_switch_ports:
+            event = port.event()
+            event["switches"] = self.switch_statuses()
+            self.events.append(("switch", event))
         for port in changed_candle_ports:
             event = port.event()
             event["candles"] = self.candle_statuses()
@@ -789,6 +994,13 @@ class MorseboardHardware:
             if self._is_candle(port)
         ]
 
+    def switch_statuses(self):
+        return [
+            port.switch_status()
+            for port in self.ports
+            if self._is_switch_input(port)
+        ]
+
     def consume_events(self):
         events = self.events
         self.events = []
@@ -802,8 +1014,11 @@ class MorseboardHardware:
     def state(self):
         rfid_readers = self.rfid_reader_statuses()
         candles = self.candle_statuses()
+        switches = self.switch_statuses()
         return {
-            "prop_5v_enabled": bool(self.power_5v.value()),
+            "prop_5v_enabled": (
+                bool(self.power_5v.value()) if self.power_5v is not None else None
+            ),
             "relay_enabled": bool(self.relay.value()),
             "ports": {
                 str(port.port_number): port.state()
@@ -814,6 +1029,9 @@ class MorseboardHardware:
                 "all_correct": self.all_rfid_readers_correct(),
             },
             "candles": candles,
+            "switches": switches,
+            "bookshelf": self.bookshelf.state() if self.bookshelf is not None else None,
+            "doorknob": self.doorknob.state() if self.doorknob is not None else None,
             "sequence": {
                 "active": self.sequence_phase is not None,
                 "step_index": self.sequence_index,
@@ -823,10 +1041,15 @@ class MorseboardHardware:
         }
 
     def safe_defaults(self):
-        self.set_power(config.PROP_5V_ENABLED_AT_BOOT)
+        if self.power_5v is not None:
+            self.set_power(config.PROP_5V_ENABLED_AT_BOOT)
         self.set_relay(False)
         for port in self.ports:
-            if self._is_rfid_input(port):
+            if self._is_reserved(port):
+                port.safe_defaults()
+            elif self._is_rfid_input(port):
+                port.safe_defaults()
+            elif self._is_switch_input(port):
                 port.safe_defaults()
             elif self._is_candle(port):
                 port.safe_defaults()
@@ -835,6 +1058,10 @@ class MorseboardHardware:
             else:
                 port.set_a(False)
                 port.set_b(False)
+        if self.bookshelf is not None:
+            self.bookshelf.safe_defaults()
+        if self.doorknob is not None:
+            self.doorknob.reset(reason="startup_reset")
         self.stop_sequence()
         self.dirty = True
 

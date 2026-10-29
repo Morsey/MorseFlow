@@ -69,6 +69,85 @@ The retained board `state` payload also includes:
 {"demon_seals": {"readers": [{"port": 3, "rfid": "correct", "prop": "demon_seal_1", "reader": 1}], "all_correct": false}}
 ```
 
+## Switch Input Events
+
+MB10 port 4 is the Cross on Symbols reed-switch sensor 2. Debounced state
+changes publish to:
+
+```text
+morseflow/prodigy/cmcm/mb-010/event
+```
+
+Example closed-switch event:
+
+```json
+{"board_id": "mb-010", "event": "switch", "data": {"port": 4, "active": true, "prop": "cross_on_symbols_2", "sensor": 2, "previous": false, "switches": [{"port": 4, "active": true, "prop": "cross_on_symbols_2", "sensor": 2}]}}
+```
+
+The retained board `state` payload includes the current value in its top-level
+`switches` list. The input uses Signal B with a pull-up: closed to GND is
+`active: true`, and open is `active: false`.
+
+## Bookshelf Events
+
+MB6 publishes a `bookshelf` event whenever a debounced book position changes:
+
+```text
+morseflow/prodigy/cmcm/mb-006/event
+```
+
+```json
+{"board_id":"mb-006","event":"bookshelf","data":{"prop":"bookshelf","book":10,"state":"in","previous":"between","in_closed":true,"out_closed":false,"books":[]}}
+```
+
+Book states are `in`, `out`, `between` when neither reed switch is closed, and
+`both` when both switches are closed. The event's `books` array contains the
+current status of all ten books. The retained board state contains the same
+information under `state.bookshelf`.
+
+## Doorknob Safe Events And Configuration
+
+MB6 polls the AS5600 angle sensor locally and does not publish continuous angle
+events. It publishes `doorknob` events only for accepted combination steps,
+wrong-direction target arrivals, success, manual/automatic resets, configuration
+changes, and sensor errors or recovery. The latest angle remains available in
+the retained `state.doorknob` object and through `cmd/status`.
+
+Turning the dial in the wrong direction between targets is tolerated. Progress
+fails only when the current target is reached from the wrong direction.
+
+A completed combination publishes an event with `reason: "success"`. No relay
+or other output is operated by the doorknob puzzle.
+
+Update the locally evaluated combination at runtime with:
+
+```text
+morseflow/prodigy/cmcm/mb-006/cmd/doorknob/config
+```
+
+```json
+{"sequence":[{"target":0,"direction":"cw","min_travel":90},{"target":180,"direction":"ccw","min_travel":90}],"tolerance_degrees":10,"target_overturn_degrees":15,"clockwise_sign":1,"save":true}
+```
+
+Directions are `cw`, `ccw`, or `either`. `min_travel` prevents a step from
+being accepted merely because the dial was already resting on its target.
+`target_overturn_degrees` allows the dial to pass beyond a target in the
+required direction and still accept the step.
+Set `clockwise_sign` to `-1` if the installed sensor's angle increases in the
+opposite physical direction. With `save: true`, the board writes
+`doorknob_config.json` and reloads it at boot; without it, the change lasts
+until restart.
+
+Reset progress without changing the combination:
+
+```text
+morseflow/prodigy/cmcm/mb-006/cmd/doorknob/reset
+```
+
+```json
+{}
+```
+
 ## Candle Events
 
 MB1 ports 1 and 2 are passive candle PIBs. Signal A drives the candle LED.
