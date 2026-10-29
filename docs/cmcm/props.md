@@ -77,20 +77,20 @@ reported through MQTT; it does not operate the optional relay.
 
 ## MB-010
 
-Ports 1-3 are RFID PIBs for the Hang the Dolls puzzle. Signal A reports a
+Ports 5-7 are RFID PIBs for the Hang the Dolls puzzle. Signal A reports a
 wrong tag and Signal B reports the correct tag. The DFPlayer Mini uses its
 dedicated UART pins and does not consume an RJ45 port.
 
 | Port | Signal A | Signal B | Prop Power | Prop / PIB | Status |
 | --- | --- | --- | --- | --- | --- |
-| 1 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Doll 1 RFID reader | Bench tested |
-| 2 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Doll 2 RFID reader | Bench tested |
-| 3 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Doll 3 RFID reader | Bench tested |
-| 4 | Unused | Reed-switch input, active-low with pull-up | GND used by dry contact; prop power not required | Cross on Symbols sensor 2 | Configured |
-| 5 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
-| 6 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
-| 7 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
-| 8 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
+| 1 | I2C1 SDA | I2C1 SCL | Switched 5V normally on, 12V always live | TOF1 VL53L0X | Configured |
+| 2 | I2C0 SDA | I2C0 SCL | Switched 5V normally on, 12V always live | TOF2 VL53L0X | Configured |
+| 3 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
+| 4 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
+| 5 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Doll 1 RFID reader | Bench tested |
+| 6 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Doll 2 RFID reader | Bench tested |
+| 7 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Doll 3 RFID reader | Bench tested |
+| 8 | Unused | Reed-switch input, active-low with pull-up | GND used by dry contact; prop power not required | Cross on Symbols sensor 2 | Configured |
 
 ## Prop Template
 

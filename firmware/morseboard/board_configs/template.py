@@ -28,6 +28,14 @@ SWITCH_INPUT_PORTS = {
     # },
 }
 
+# Two independent dry-contact inputs sharing one Morseboard port.
+DUAL_SWITCH_INPUT_PORTS = {
+    # 7: {
+    #     "a": {"prop": "input_a", "active_value": 0, "pull": "up"},
+    #     "b": {"prop": "input_b", "active_value": 0, "pull": "up"},
+    # },
+}
+
 # Candle ports use Signal A as the candle LED output and Signal B as the
 # active-low IR detection input.
 # Set CANDLE_AUTO_TRIGGER_ENABLED = False to report IR changes without locally
@@ -49,6 +57,32 @@ DEMON_KNOCKER_PORTS = {
     #     "pixel_count": 1,
     #     "pixel_color_order": "RGB",
     #     "solenoid_active_low": False,
+    # },
+}
+
+# Dual active-high latch-lock outputs. Commands use cmd/latch_lock/<label>.
+# Requested durations are always clamped to max_pulse_ms.
+LATCH_LOCK_PORTS = {
+    # 5: {
+    #     "prop": "example_latch_locks",
+    #     "signal_a_lock": 2,
+    #     "signal_b_lock": 13,
+    #     "pulse_ms": 100,
+    #     "max_pulse_ms": 100,
+    # },
+}
+
+# Mixed output/input cross-drop port. Signal A is a bounded active-high
+# solenoid pulse; Signal B is a debounced dry-contact input.
+CROSS_DROP_PORTS = {
+    # 8: {
+    #     "prop": "cross_drop",
+    #     "sensor": "cross",
+    #     "active_value": 0,
+    #     "pull": "up",
+    #     "debounce_ms": 50,
+    #     "pulse_ms": 500,
+    #     "max_pulse_ms": 1000,
     # },
 }
 

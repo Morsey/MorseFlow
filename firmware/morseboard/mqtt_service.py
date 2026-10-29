@@ -176,6 +176,9 @@ class MQTTService:
         elif suffix.startswith("cmd/demon_led/"):
             led_number = int(suffix.split("/")[-1])
             self.hardware.command_demon_led(led_number, command)
+        elif suffix.startswith("cmd/latch_lock/"):
+            lock_label = suffix.split("/")[-1]
+            self.hardware.command_latch_lock(lock_label, command, now_ms)
         elif suffix.startswith("cmd/port/"):
             port_number = int(suffix.split("/")[-1])
             self.hardware.command_port(port_number, command, now_ms)

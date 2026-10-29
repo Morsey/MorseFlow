@@ -1,5 +1,4 @@
-"""
-Morseboard GPIO visual test.
+"""Morseboard GPIO output pulse test.
 
 Copy this file to the board filesystem root alongside pins.py, then run it from
 the MicroPython REPL:
@@ -28,8 +27,8 @@ TEST_PROP_POWER = True
 TEST_OPTIONAL_RELAY = True
 
 
-def _pin(pin_number, mode=Pin.OUT, initial=0):
-    pin = Pin(pin_number, mode)
+def _pin(pin_number, initial=0):
+    pin = Pin(pin_number, Pin.OUT)
     pin.value(initial)
     return pin
 
@@ -63,23 +62,25 @@ def _pulse_group(label, group, duration_ms=PULSE_MS):
 
 
 def main(repeat=True):
-    print("Morseboard hardware pin test")
+    print("Morseboard GPIO output pulse test")
     print("Press Ctrl-C to stop; all tested outputs will be set low.")
 
     prop_power = None
     relay = None
     if TEST_PROP_POWER:
         prop_power = _pin(pins.PROP_POWER_ENABLE, initial=1)
-        print("Switched 5V prop power enabled on GPIO{}".format(pins.PROP_POWER_ENABLE))
+        print("Switched 5V prop power enabled on GPIO{}".format(
+            pins.PROP_POWER_ENABLE,
+        ))
         sleep_ms(POWER_SETTLE_MS)
 
     if TEST_OPTIONAL_RELAY:
-        relay = _pin(pins.OPTIONAL_RELAY, initial=0)
+        relay = _pin(pins.OPTIONAL_RELAY)
 
-    port_pins = []
-    for signal_a_pin, signal_b_pin in pins.PORT_PINS:
-        port_pins.append((_pin(signal_a_pin), _pin(signal_b_pin)))
-
+    port_pins = [
+        (_pin(signal_a), _pin(signal_b))
+        for signal_a, signal_b in pins.PORT_PINS
+    ]
     all_a = [pair[0] for pair in port_pins]
     all_b = [pair[1] for pair in port_pins]
     all_signals = all_a + all_b
@@ -89,9 +90,10 @@ def main(repeat=True):
             _all_off(port_pins, relay)
 
             for index, (signal_a, signal_b) in enumerate(port_pins, start=1):
+                signal_a_number, signal_b_number = pins.PORT_PINS[index - 1]
                 print("Port", index)
-                _pulse("  Signal A GPIO{}".format(pins.PORT_PINS[index - 1][0]), signal_a)
-                _pulse("  Signal B GPIO{}".format(pins.PORT_PINS[index - 1][1]), signal_b)
+                _pulse("  Signal A GPIO{}".format(signal_a_number), signal_a)
+                _pulse("  Signal B GPIO{}".format(signal_b_number), signal_b)
                 sleep_ms(PORT_GAP_MS)
 
             _pulse_group("All Signal A pins", all_a)

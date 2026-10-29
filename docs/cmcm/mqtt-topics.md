@@ -71,7 +71,7 @@ The retained board `state` payload also includes:
 
 ## Switch Input Events
 
-MB10 port 4 is the Cross on Symbols reed-switch sensor 2. Debounced state
+MB10 port 8 is the Cross on Symbols reed-switch sensor 2. Debounced state
 changes publish to:
 
 ```text
@@ -81,12 +81,37 @@ morseflow/prodigy/cmcm/mb-010/event
 Example closed-switch event:
 
 ```json
-{"board_id": "mb-010", "event": "switch", "data": {"port": 4, "active": true, "prop": "cross_on_symbols_2", "sensor": 2, "previous": false, "switches": [{"port": 4, "active": true, "prop": "cross_on_symbols_2", "sensor": 2}]}}
+{"board_id": "mb-010", "event": "switch", "data": {"port": 8, "active": true, "prop": "cross_on_symbols_2", "sensor": 2, "previous": false, "switches": [{"port": 8, "active": true, "prop": "cross_on_symbols_2", "sensor": 2}]}}
 ```
 
 The retained board `state` payload includes the current value in its top-level
 `switches` list. The input uses Signal B with a pull-up: closed to GND is
 `active: true`, and open is `active: false`.
+
+## ToF Sensor Events
+
+MB10 reads two VL53L0X sensors directly over I2C: TOF1 on port 1 and TOF2 on
+port 2. A `tof` event is published when a sensor crosses its configured near
+threshold or changes health status. The default threshold is 300 mm with 20 mm
+hysteresis. Distance changes only trigger a report when they exceed 50 mm from
+the last reported reading. Current readings are also available in the retained
+board state's `tof_sensors` list.
+
+```json
+{"board_id": "mb-010", "event": "tof", "data": {"port": 1, "sensor": "TOF1", "status": "ready", "distance_mm": 245, "near": true, "near_threshold_mm": 300}}
+```
+
+MB3 port 7 has two independently debounced inputs using internal pull-ups:
+Signal A is `pull_cord`, and Signal B is `vampire_delay_switch`. Both become
+active when connected to GND. Their changes publish on:
+
+```text
+morseflow/prodigy/cmcm/mb-003/event
+```
+
+The event type is `switch`; `data.changes` identifies the input or inputs that
+changed, while `data.switches` contains the current status of both. The retained
+board state also contains both values in `state.switches`.
 
 ## Bookshelf Events
 
@@ -104,6 +129,34 @@ Book states are `in`, `out`, `between` when neither reed switch is closed, and
 `both` when both switches are closed. The event's `books` array contains the
 current status of all ten books. The retained board state contains the same
 information under `state.bookshelf`.
+
+## Latch Lock Commands
+
+MB3 port 5 controls two active-high latch locks: Signal A is lock 2 and Signal
+B is lock 13. Port 6 Signal A controls lock 12. Open a lock by publishing one
+of these commands:
+
+```text
+morseflow/prodigy/cmcm/mb-003/cmd/latch_lock/2
+morseflow/prodigy/cmcm/mb-003/cmd/latch_lock/13
+morseflow/prodigy/cmcm/mb-003/cmd/latch_lock/12
+```
+
+Payload:
+
+```json
+{"open": true}
+```
+
+An optional `duration_ms` can request a different pulse duration. Firmware
+clamps all requests to `LATCH_LOCK_MAX_PULSE_MS`, which is configured as 1,000 ms
+on MB3:
+
+```json
+{"open": true, "duration_ms": 1000}
+```
+
+The retained board state reports configured locks under `state.latch_locks`.
 
 ## Doorknob Safe Events And Configuration
 
@@ -201,6 +254,21 @@ An optional duration keeps timed operation available:
 ```
 
 ## Demon Knocker Commands
+
+MB2 port 8 controls the cross drop. Signal A is the solenoid output and Signal
+B is the active-low, pull-up reed-switch input. To release the cross, publish:
+
+```text
+morseflow/prodigy/cmcm/mb-002/cmd/port/8
+```
+
+```json
+{"drop": true}
+```
+
+An optional `duration_ms` overrides the 500 ms default, up to the 1000 ms
+safety limit. Reed changes use the standard `switch` event and appear in the
+retained `state.switches` list with prop `cross_drop`.
 
 MB2 ports 1-3 and 6-7 are direct-wired demon knockers. Signal A drives each
 solenoid, and Signal B drives each NeoPixel data line. Knockers 4 and 5 correct

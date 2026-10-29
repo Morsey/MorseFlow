@@ -6,15 +6,15 @@ test/upload notes, see `docs/cmcm/board-status-log.md`.
 | Board ID | Config | Hardware | Location | IP Mode | MQTT Topic Root | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | `mb-001` | `firmware/morseboard/board_configs/mb_001.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-001` | MQTT-controlled candles on ports 1-2; demon seals RFID readers on ports 3-7. |
-| `mb-002` | `firmware/morseboard/board_configs/mb_002.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-002` | Demon knockers on ports 1-3 and 6-7; ports 4 and 5 are broken. |
-| `mb-003` | `firmware/morseboard/board_configs/mb_003.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-003` | Beasts RFID readers on ports 1-4. |
+| `mb-002` | `firmware/morseboard/board_configs/mb_002.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-002` | Demon knockers on ports 1-3 and 6-7; cross drop on port 8; ports 4 and 5 are broken. |
+| `mb-003` | `firmware/morseboard/board_configs/mb_003.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-003` | Beasts RFID readers on ports 1-4; latch locks on ports 5-6; pull cord and vampire delay switch on port 7. |
 | `mb-004` | `firmware/morseboard/board_configs/mb_004.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-004` | Reserved. |
 | `mb-005` | `firmware/morseboard/board_configs/mb_005.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-005` | Reserved. |
 | `mb-006` | `firmware/morseboard/board_configs/mb_006.py` | Special screw-terminal W5500-EVB-Pico/Pico2 | Installed/networked | DHCP | `morseflow/prodigy/cmcm/mb-006` | Bookshelf on GPIO0-GPIO8; AS5600 safe dial on GPIO10/GPIO11. |
 | `mb-007` | `firmware/morseboard/board_configs/mb_007.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-007` | Candles on ports 1-3; IR changes publish over MQTT; outputs are controlled over MQTT. |
 | `mb-008` | `firmware/morseboard/board_configs/mb_008.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-008` | Reserved. |
 | `mb-009` | `firmware/morseboard/board_configs/mb_009.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-009` | Reserved. |
-| `mb-010` | `firmware/morseboard/board_configs/mb_010.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-010` | DFPlayer Mini; Hang the Dolls RFID readers on ports 1-3; Cross on Symbols sensor 2 on port 4. |
+| `mb-010` | `firmware/morseboard/board_configs/mb_010.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-010` | DFPlayer Mini; direct ToF sensors on ports 1-2; Hang the Dolls RFID readers on ports 5-7; Cross on Symbols sensor 2 on port 8. |
 
 ## Connected Props
 
@@ -53,13 +53,17 @@ MB-002 is the demon knocker output board. Its active config is
 | 5 | Not connected | Unavailable | Unavailable | Open | Broken port; do not use |
 | 6 | Demon knocker 4 | Solenoid output | NeoPixel data output | `demon_knocker_4` / knocker 4 / LED 4 | GRB pixel order |
 | 7 | Demon knocker 5 | Solenoid output | NeoPixel data output | `demon_knocker_5` / knocker 5 / LED 5 | GRB pixel order |
-| 8 | Not connected | Generic output | Generic output | Open | Reserved |
+| 8 | Cross drop | Solenoid output | Reed-switch input | `cross_drop` | Signal A pulses the release; Signal B detects the cross |
 
 Use the logical MQTT targets `cmd/demon_knocker/<1-5>` and
 `cmd/demon_led/<1-5>` from Node-RED. The firmware maps those logical numbers to
 the physical ports above. Physical ports 4 and 5 are broken and must not be
 used; logical knockers/LEDs 4 and 5 are available through physical ports 6 and
 7.
+
+Drop the cross through `cmd/port/8` with `{"drop": true}`. The pulse defaults
+to 500 ms and is capped at 1000 ms. Reed-switch changes are published as
+normal `switch` events.
 
 ### MB-003
 
@@ -73,7 +77,19 @@ convention.
 | 2 | Beasts RFID reader 2 | Wrong-tag input | Correct-tag input | `beasts_2` / reader 2 |
 | 3 | Beasts RFID reader 3 | Wrong-tag input | Correct-tag input | `beasts_3` / reader 3 |
 | 4 | Beasts RFID reader 4 | Wrong-tag input | Correct-tag input | `beasts_4` / reader 4 |
-| 5-8 | Not connected | Generic input/output | Generic input/output | Open |
+| 5 | Latch locks | Lock 2, active-high pulse | Lock 13, active-high pulse | `latch_lock/2` and `latch_lock/13` |
+| 6 | Latch lock | Lock 12, active-high pulse | Unused | `latch_lock/12` |
+| 7 | Puzzle switches | Pull cord, active-low input | Vampire delay switch, active-low input | `pull_cord` and `vampire_delay_switch` |
+| 8 | Not connected | Generic input/output | Generic input/output | Open |
+
+Latch locks 2, 13, and 12 are opened through `cmd/latch_lock/2`,
+`cmd/latch_lock/13`, and `cmd/latch_lock/12`. The default pulse is 100 ms, and
+firmware clamps every requested duration to the configured 1,000 ms safety
+limit.
+
+The two port 7 inputs use internal pull-ups and 50 ms debounce. Their current
+values appear in the retained board state's `switches` list. Changes publish a
+live `switch` event containing the changed input and the status of both inputs.
 
 ### MB-007
 
@@ -126,21 +142,23 @@ GPIO0 to DFPlayer RX and GPIO1 from DFPlayer TX. It is controlled through
 commands have been verified on the bench. The DFPlayer does not consume an
 RJ45 prop port.
 
-Ports 1-3 are the Hang the Dolls RFID readers. They use the same RFID PIB
+Ports 5-7 are the Hang the Dolls RFID readers. They use the same RFID PIB
 wiring as MB-001: Signal A reports a wrong tag and Signal B reports the correct
 tag. All three readers have been verified on the bench.
 
-Port 4 is Cross on Symbols sensor 2, a dry-contact reed switch. Signal B uses
+Port 8 is Cross on Symbols sensor 2, a dry-contact reed switch. Signal B uses
 an internal pull-up and becomes active when the switch closes to GND. Signal A
 is unused. Input changes are debounced for 50 ms and published over MQTT.
 
 | Port | Connected prop | Signal A | Signal B | MQTT role |
 | --- | --- | --- | --- | --- |
-| 1 | Doll 1 RFID reader | Wrong-tag input | Correct-tag input | `doll_1` / reader 1 |
-| 2 | Doll 2 RFID reader | Wrong-tag input | Correct-tag input | `doll_2` / reader 2 |
-| 3 | Doll 3 RFID reader | Wrong-tag input | Correct-tag input | `doll_3` / reader 3 |
-| 4 | Cross on Symbols sensor 2 | Unused | Reed-switch input, active-low | `cross_on_symbols_2` / sensor 2 |
-| 5-8 | Not connected | Generic input/output | Generic input/output | Open |
+| 1 | TOF1 (VL53L0X) | I2C1 SDA | I2C1 SCL | `tof_1` / `TOF1` |
+| 2 | TOF2 (VL53L0X) | I2C0 SDA | I2C0 SCL | `tof_2` / `TOF2` |
+| 3-4 | Not connected | Generic input/output | Generic input/output | Open |
+| 5 | Doll 1 RFID reader | Wrong-tag input | Correct-tag input | `doll_1` / reader 1 |
+| 6 | Doll 2 RFID reader | Wrong-tag input | Correct-tag input | `doll_2` / reader 2 |
+| 7 | Doll 3 RFID reader | Wrong-tag input | Correct-tag input | `doll_3` / reader 3 |
+| 8 | Cross on Symbols sensor 2 | Unused | Reed-switch input, active-low | `cross_on_symbols_2` / sensor 2 |
 
 ### MB-003 To MB-005 And MB-008 To MB-009
 

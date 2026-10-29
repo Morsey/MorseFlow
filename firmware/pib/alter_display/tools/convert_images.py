@@ -1,29 +1,67 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
 
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE_DIR = ROOT / "images"
 WIDTH = 128
 HEIGHT = 64
+PORTRAIT_WIDTH = 64
+PORTRAIT_HEIGHT = 128
 THRESHOLD = 128
 
 
-def convert_image(path):
+def pixels_from_pillow(path):
     image = Image.open(path).convert("L")
-    image.thumbnail((WIDTH, HEIGHT))
+    image.thumbnail((PORTRAIT_WIDTH, PORTRAIT_HEIGHT))
 
-    canvas = Image.new("L", (WIDTH, HEIGHT), 0)
-    x = (WIDTH - image.width) // 2
-    y = (HEIGHT - image.height) // 2
+    canvas = Image.new("L", (PORTRAIT_WIDTH, PORTRAIT_HEIGHT), 0)
+    x = (PORTRAIT_WIDTH - image.width) // 2
+    y = (PORTRAIT_HEIGHT - image.height) // 2
     canvas.paste(image, (x, y))
+    canvas = canvas.transpose(Image.Transpose.ROTATE_270)
+    return canvas.tobytes()
+
+
+def pixels_from_imagemagick(path):
+    command = [
+        "magick", str(path),
+        "-colorspace", "Gray",
+        "-resize", "{}x{}".format(PORTRAIT_WIDTH, PORTRAIT_HEIGHT),
+        "-gravity", "center",
+        "-background", "black",
+        "-extent", "{}x{}".format(PORTRAIT_WIDTH, PORTRAIT_HEIGHT),
+        "-rotate", "90",
+        "-depth", "8",
+        "gray:-",
+    ]
+    return subprocess.run(command, check=True, capture_output=True).stdout
+
+
+def convert_image(path):
+    if Image is not None:
+        pixels = pixels_from_pillow(path)
+    else:
+        pixels = pixels_from_imagemagick(path)
+
+    expected = WIDTH * HEIGHT
+    if len(pixels) != expected:
+        raise ValueError(
+            "expected {} grayscale pixels from {}, got {}".format(
+                expected, path.name, len(pixels)
+            )
+        )
 
     output = bytearray(WIDTH * HEIGHT // 8)
     for yy in range(HEIGHT):
         for xx in range(WIDTH):
-            if canvas.getpixel((xx, yy)) > THRESHOLD:
+            if pixels[yy * WIDTH + xx] > THRESHOLD:
                 index = xx + (yy // 8) * WIDTH
                 output[index] |= 1 << (yy % 8)
 

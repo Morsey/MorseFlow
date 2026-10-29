@@ -38,3 +38,17 @@ DEMON_KNOCKER_PORTS = {
         "solenoid_active_low": False,
     },
 }
+
+# Port 8: Signal A releases the cross with a bounded solenoid pulse. Signal B
+# reads the reed switch and is active when the contact closes to GND.
+CROSS_DROP_PORTS = {
+    8: {
+        "prop": "cross_drop",
+        "sensor": "cross",
+        "active_value": 0,
+        "pull": "up",
+        "debounce_ms": 50,
+        "pulse_ms": 500,
+        "max_pulse_ms": 1000,
+    },
+}

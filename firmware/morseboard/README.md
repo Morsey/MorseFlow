@@ -30,6 +30,7 @@ Upload these files from this folder to the board filesystem:
 - `ethernet.py`
 - `mqtt_client.py`
 - `mqtt_service.py`
+- `vl53l0x.py` (when direct ToF sensors are configured)
 
 Edit `config.py` for the site, room, board ID, MQTT broker, and network mode.
 

@@ -1,10 +1,11 @@
 {
-	"folders": [
-		{
-			"path": "../.."
-		}
-	],
-	"settings": {
-		"python.languageServer": "Pylance"
-	}
+    "folders": [
+        {
+            "path": "../.."
+        },
+        {
+            "name": "Board Filesystem",
+            "uri": "pico:"
+        }
+    ]
 }

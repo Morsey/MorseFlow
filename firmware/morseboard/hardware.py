@@ -1,4 +1,4 @@
-from machine import Pin
+from machine import I2C, Pin
 from time import ticks_add, ticks_diff, ticks_ms
 
 import config
@@ -105,6 +105,122 @@ class PropPort:
     def _cancel_pin_test(self):
         self.test_step = None
         self.test_deadline = None
+
+
+class LatchLockPort:
+    def __init__(self, port_number, signal_a_pin, signal_b_pin, metadata=None):
+        self.port_number = port_number
+        self.metadata = metadata or {}
+        self.a = Pin(signal_a_pin, Pin.OUT)
+        self.b = Pin(signal_b_pin, Pin.OUT)
+        self.a_deadline = None
+        self.b_deadline = None
+        self.default_pulse_ms = max(
+            0,
+            int(
+                self.metadata.get(
+                    "pulse_ms",
+                    getattr(config, "LATCH_LOCK_PULSE_MS", 100),
+                )
+            ),
+        )
+        self.max_pulse_ms = max(
+            0,
+            int(
+                self.metadata.get(
+                    "max_pulse_ms",
+                    getattr(config, "LATCH_LOCK_MAX_PULSE_MS", 100),
+                )
+            ),
+        )
+        self.locks = {
+            "a": self.metadata.get("signal_a_lock"),
+            "b": self.metadata.get("signal_b_lock"),
+        }
+        self.safe_defaults()
+        log(
+            "port{}".format(self.port_number),
+            "latch locks initialized A={} B={} max={} ms".format(
+                self.locks["a"],
+                self.locks["b"],
+                self.max_pulse_ms,
+            ),
+        )
+
+    def update(self, now_ms):
+        changed = False
+        if self.a_deadline is not None and ticks_diff(now_ms, self.a_deadline) >= 0:
+            self.a.value(0)
+            self.a_deadline = None
+            changed = True
+        if self.b_deadline is not None and ticks_diff(now_ms, self.b_deadline) >= 0:
+            self.b.value(0)
+            self.b_deadline = None
+            changed = True
+        return changed
+
+    def open_lock(self, lock_label, now_ms, duration_ms=None):
+        signal = self._signal_for_lock(lock_label)
+        if signal is None:
+            return False
+        if duration_ms is None:
+            duration_ms = self.default_pulse_ms
+        duration_ms = min(self.max_pulse_ms, max(0, int(duration_ms)))
+        pin = self.a if signal == "a" else self.b
+        pin.value(1)
+        deadline = ticks_add(now_ms, duration_ms)
+        if signal == "a":
+            self.a_deadline = deadline
+        else:
+            self.b_deadline = deadline
+        log(
+            "port{}".format(self.port_number),
+            "latch lock {} open pulse {} ms".format(lock_label, duration_ms),
+        )
+        return True
+
+    def state(self):
+        return {
+            "mode": "latch_locks",
+            "locks": self.lock_statuses(),
+            "pulse_ms": self.default_pulse_ms,
+            "max_pulse_ms": self.max_pulse_ms,
+        }
+
+    def lock_statuses(self):
+        return [
+            {
+                "lock": lock_label,
+                "port": self.port_number,
+                "signal": signal,
+                "open_pulse_active": (
+                    self.a_deadline is not None
+                    if signal == "a"
+                    else self.b_deadline is not None
+                ),
+            }
+            for signal, lock_label in (("a", self.locks["a"]), ("b", self.locks["b"]))
+            if lock_label is not None
+        ]
+
+    def safe_defaults(self):
+        self.a.value(0)
+        self.b.value(0)
+        self.a_deadline = None
+        self.b_deadline = None
+
+    def command(self, command, now_ms):
+        lock_label = command.get("lock")
+        if lock_label is None or not command.get("open"):
+            return False
+        return self.open_lock(lock_label, now_ms, command.get("duration_ms"))
+
+    def _signal_for_lock(self, lock_label):
+        label = str(lock_label)
+        for signal in ("a", "b"):
+            if self.locks[signal] is not None and str(self.locks[signal]) == label:
+                return signal
+        return None
 
 
 class ReservedPort:
@@ -217,6 +333,230 @@ class RFIDInputPort:
         return "no_card"
 
 
+class ToFPort:
+    def __init__(self, port_number, signal_a_pin, signal_b_pin, metadata=None):
+        self.port_number = port_number
+        self.metadata = metadata or {}
+        self.signal_a_pin = signal_a_pin
+        self.signal_b_pin = signal_b_pin
+        self.i2c_id = int(self.metadata.get("i2c_id", 1))
+        self.i2c_frequency = int(
+            self.metadata.get(
+                "i2c_frequency",
+                getattr(config, "TOF_I2C_FREQUENCY", 100000),
+            )
+        )
+        self.address = int(self.metadata.get("address", 0x29))
+        self.read_interval_ms = int(
+            self.metadata.get(
+                "read_interval_ms",
+                getattr(config, "TOF_READ_INTERVAL_MS", 250),
+            )
+        )
+        self.retry_interval_ms = int(
+            self.metadata.get(
+                "retry_interval_ms",
+                getattr(config, "TOF_RETRY_INTERVAL_MS", 5000),
+            )
+        )
+        self.range_timeout_ms = int(
+            self.metadata.get(
+                "range_timeout_ms",
+                getattr(config, "TOF_RANGE_TIMEOUT_MS", 500),
+            )
+        )
+        self.near_threshold_mm = int(
+            self.metadata.get(
+                "near_threshold_mm",
+                getattr(config, "TOF_NEAR_THRESHOLD_MM", 300),
+            )
+        )
+        self.hysteresis_mm = int(
+            self.metadata.get(
+                "hysteresis_mm",
+                getattr(config, "TOF_HYSTERESIS_MM", 20),
+            )
+        )
+        self.report_delta_mm = int(
+            self.metadata.get(
+                "report_delta_mm",
+                getattr(config, "TOF_REPORT_DELTA_MM", 50),
+            )
+        )
+        self.i2c = None
+        self.sensor = None
+        self.distance_mm = None
+        self.last_reported_distance_mm = None
+        self.near = None
+        self.previous_near = None
+        self.status = "initializing"
+        self.previous_status = None
+        self.last_error = None
+        power_settle_ms = int(self.metadata.get("power_settle_ms", 500))
+        self.next_read_ms = ticks_add(ticks_ms(), power_settle_ms)
+        log(
+            "port{}".format(self.port_number),
+            "ToF {} initialized on I2C{} SDA={} SCL={}".format(
+                self.metadata.get("sensor", self.port_number),
+                self.i2c_id,
+                self.signal_a_pin,
+                self.signal_b_pin,
+            ),
+        )
+
+    def update(self, now_ms):
+        if ticks_diff(now_ms, self.next_read_ms) < 0:
+            return False
+
+        if self.sensor is None:
+            old_status = self.status
+            if not self._connect(now_ms):
+                return self.status != old_status
+
+        old_status = self.status
+        old_near = self.near
+        distance_changed = False
+        try:
+            distance_mm = int(self.sensor.range)
+            if distance_mm >= 65535:
+                self.distance_mm = None
+                self.near = None
+                self.status = "out_of_range"
+            else:
+                self.distance_mm = distance_mm
+                self.status = "ready"
+                if self.near is None:
+                    self.near = distance_mm <= self.near_threshold_mm
+                elif self.near:
+                    self.near = distance_mm <= (
+                        self.near_threshold_mm + self.hysteresis_mm
+                    )
+                else:
+                    self.near = distance_mm <= self.near_threshold_mm
+                if (
+                    self.last_reported_distance_mm is None
+                    or abs(distance_mm - self.last_reported_distance_mm)
+                    > self.report_delta_mm
+                ):
+                    distance_changed = True
+            self.last_error = None
+            self.next_read_ms = ticks_add(now_ms, self.read_interval_ms)
+        except Exception as exc:
+            self.distance_mm = None
+            self.near = None
+            self.status = "error"
+            self.last_error = repr(exc)
+            self.sensor = None
+            self.i2c = None
+            self.next_read_ms = ticks_add(now_ms, self.retry_interval_ms)
+            log(
+                "port{}".format(self.port_number),
+                "ToF read failed: {}".format(self.last_error),
+            )
+
+        changed = (
+            self.status != old_status
+            or self.near != old_near
+            or distance_changed
+        )
+        if changed:
+            if self.distance_mm is not None:
+                self.last_reported_distance_mm = self.distance_mm
+            self.previous_status = old_status
+            self.previous_near = old_near
+            log(
+                "port{}".format(self.port_number),
+                "ToF status={} distance_mm={} near={}".format(
+                    self.status,
+                    self.distance_mm,
+                    self.near,
+                ),
+            )
+        return changed
+
+    def state(self):
+        return self.tof_status()
+
+    def tof_status(self):
+        data = {
+            "mode": "tof",
+            "port": self.port_number,
+            "sensor": self.metadata.get("sensor"),
+            "prop": self.metadata.get("prop"),
+            "status": self.status,
+            "distance_mm": self.distance_mm,
+            "near": self.near,
+            "near_threshold_mm": self.near_threshold_mm,
+            "hysteresis_mm": self.hysteresis_mm,
+            "report_delta_mm": self.report_delta_mm,
+            "i2c_id": self.i2c_id,
+            "address": self.address,
+        }
+        if self.last_error is not None:
+            data["error"] = self.last_error
+        return data
+
+    def event(self):
+        data = self.tof_status()
+        data["previous_status"] = self.previous_status
+        data["previous_near"] = self.previous_near
+        return data
+
+    def safe_defaults(self):
+        # I2C pins are owned by the peripheral and must not be driven as outputs.
+        pass
+
+    def command(self, command, now_ms):
+        log(
+            "port{}".format(self.port_number),
+            "ignored command for direct ToF sensor {}".format(command),
+        )
+
+    def _connect(self, now_ms):
+        old_status = self.status
+        try:
+            from vl53l0x import VL53L0X
+
+            self.i2c = I2C(
+                self.i2c_id,
+                sda=Pin(self.signal_a_pin),
+                scl=Pin(self.signal_b_pin),
+                freq=self.i2c_frequency,
+            )
+            if self.address not in self.i2c.scan():
+                raise RuntimeError(
+                    "VL53L0X not found at 0x{:02X}".format(self.address)
+                )
+            self.sensor = VL53L0X(
+                self.i2c,
+                address=self.address,
+                io_timeout_ms=self.range_timeout_ms,
+            )
+            self.status = "ready"
+            self.last_error = None
+            self.next_read_ms = now_ms
+            log(
+                "port{}".format(self.port_number),
+                "ToF connected at 0x{:02X}".format(self.address),
+            )
+            return True
+        except Exception as exc:
+            self.sensor = None
+            self.i2c = None
+            self.distance_mm = None
+            self.near = None
+            self.status = "error"
+            self.last_error = repr(exc)
+            self.next_read_ms = ticks_add(now_ms, self.retry_interval_ms)
+            if old_status != self.status or self.previous_status is None:
+                self.previous_status = old_status
+                log(
+                    "port{}".format(self.port_number),
+                    "ToF connection failed: {}".format(self.last_error),
+                )
+            return False
+
+
 class SwitchInputPort:
     def __init__(self, port_number, signal_a_pin, signal_b_pin, metadata=None):
         self.port_number = port_number
@@ -292,6 +632,9 @@ class SwitchInputPort:
             data["sensor"] = sensor
         return data
 
+    def switch_statuses(self):
+        return [self.switch_status()]
+
     def event(self):
         data = self.switch_status()
         data["previous"] = self.previous_active
@@ -309,6 +652,221 @@ class SwitchInputPort:
 
     def _read_active(self):
         return self.input.value() == self.active_value
+
+
+class CrossDropPort:
+    def __init__(self, port_number, signal_a_pin, signal_b_pin, metadata=None):
+        self.port_number = port_number
+        self.metadata = metadata or {}
+        self.solenoid = Pin(signal_a_pin, Pin.OUT, value=0)
+        pull_name = str(self.metadata.get("pull", "up")).lower()
+        if pull_name == "up":
+            self.reed = Pin(signal_b_pin, Pin.IN, Pin.PULL_UP)
+        elif pull_name == "down":
+            self.reed = Pin(signal_b_pin, Pin.IN, Pin.PULL_DOWN)
+        else:
+            self.reed = Pin(signal_b_pin, Pin.IN)
+        self.active_value = 1 if self.metadata.get("active_value", 0) else 0
+        self.debounce_ms = max(0, int(self.metadata.get("debounce_ms", 50)))
+        self.default_pulse_ms = max(
+            0, int(self.metadata.get("pulse_ms", config.CROSS_DROP_PULSE_MS))
+        )
+        self.max_pulse_ms = max(
+            0, int(self.metadata.get("max_pulse_ms", config.CROSS_DROP_MAX_PULSE_MS))
+        )
+        self.solenoid_deadline = None
+        self.raw_active = self._read_active()
+        self.current_active = self.raw_active
+        self.previous_active = self.current_active
+        self.raw_changed_ms = ticks_ms()
+        log(
+            "port{}".format(self.port_number),
+            "cross drop initialized reed_active={}".format(int(self.current_active)),
+        )
+
+    def update(self, now_ms):
+        changed = False
+        self.reed_changed = False
+        if (
+            self.solenoid_deadline is not None
+            and ticks_diff(now_ms, self.solenoid_deadline) >= 0
+        ):
+            self.solenoid.value(0)
+            self.solenoid_deadline = None
+            changed = True
+        active = self._read_active()
+        if active != self.raw_active:
+            self.raw_active = active
+            self.raw_changed_ms = now_ms
+        elif active != self.current_active and ticks_diff(
+            now_ms, self.raw_changed_ms
+        ) >= self.debounce_ms:
+            self.previous_active = self.current_active
+            self.current_active = active
+            self.reed_changed = True
+            changed = True
+            log(
+                "port{}".format(self.port_number),
+                "cross reed active={}".format(int(active)),
+            )
+        return changed
+
+    def drop(self, now_ms, duration_ms=None):
+        if duration_ms is None:
+            duration_ms = self.default_pulse_ms
+        duration_ms = min(self.max_pulse_ms, max(0, int(duration_ms)))
+        self.solenoid.value(1)
+        self.solenoid_deadline = ticks_add(now_ms, duration_ms)
+        log(
+            "port{}".format(self.port_number),
+            "cross drop pulse {} ms".format(duration_ms),
+        )
+
+    def state(self):
+        return {
+            "mode": "cross_drop",
+            "solenoid_pulse_active": self.solenoid_deadline is not None,
+            "reed": self.switch_status(),
+            "pulse_ms": self.default_pulse_ms,
+            "max_pulse_ms": self.max_pulse_ms,
+        }
+
+    def switch_status(self):
+        data = {
+            "port": self.port_number,
+            "signal": "b",
+            "active": self.current_active,
+        }
+        if self.metadata.get("prop") is not None:
+            data["prop"] = self.metadata["prop"]
+        if self.metadata.get("sensor") is not None:
+            data["sensor"] = self.metadata["sensor"]
+        return data
+
+    def switch_statuses(self):
+        return [self.switch_status()]
+
+    def event(self):
+        data = self.switch_status()
+        data["previous"] = self.previous_active
+        return data
+
+    def command(self, command, now_ms):
+        if command.get("drop") or command.get("pulse"):
+            self.drop(now_ms, command.get("duration_ms"))
+
+    def safe_defaults(self):
+        self.solenoid.value(0)
+        self.solenoid_deadline = None
+
+    def _read_active(self):
+        return self.reed.value() == self.active_value
+
+
+class DualSwitchInputPort:
+    def __init__(self, port_number, signal_a_pin, signal_b_pin, metadata=None):
+        self.port_number = port_number
+        self.metadata = metadata or {}
+        self.inputs = {}
+        self.changed_inputs = []
+        for signal, pin_number in (("a", signal_a_pin), ("b", signal_b_pin)):
+            input_config = self.metadata.get(signal, {})
+            pull_name = str(input_config.get("pull", "up")).lower()
+            if pull_name == "up":
+                pin = Pin(pin_number, Pin.IN, Pin.PULL_UP)
+            elif pull_name == "down":
+                pin = Pin(pin_number, Pin.IN, Pin.PULL_DOWN)
+            else:
+                pin = Pin(pin_number, Pin.IN)
+            active_value = 1 if input_config.get("active_value", 0) else 0
+            active = pin.value() == active_value
+            self.inputs[signal] = {
+                "pin": pin,
+                "prop": input_config.get("prop"),
+                "sensor": input_config.get("sensor"),
+                "active_value": active_value,
+                "debounce_ms": max(
+                    0,
+                    int(
+                        input_config.get(
+                            "debounce_ms",
+                            getattr(config, "SWITCH_DEBOUNCE_MS", 50),
+                        )
+                    ),
+                ),
+                "raw_active": active,
+                "active": active,
+                "previous": active,
+                "raw_changed_ms": ticks_ms(),
+            }
+        log("port{}".format(self.port_number), "dual switch inputs initialized")
+
+    def update(self, now_ms):
+        self.changed_inputs = []
+        for signal in ("a", "b"):
+            input_state = self.inputs[signal]
+            active = input_state["pin"].value() == input_state["active_value"]
+            if active != input_state["raw_active"]:
+                input_state["raw_active"] = active
+                input_state["raw_changed_ms"] = now_ms
+                continue
+            if active == input_state["active"]:
+                continue
+            if ticks_diff(now_ms, input_state["raw_changed_ms"]) < input_state["debounce_ms"]:
+                continue
+            input_state["previous"] = input_state["active"]
+            input_state["active"] = active
+            self.changed_inputs.append(signal)
+            log(
+                "port{}".format(self.port_number),
+                "{} active={}".format(
+                    input_state.get("prop") or "signal_{}".format(signal),
+                    int(active),
+                ),
+            )
+        return bool(self.changed_inputs)
+
+    def state(self):
+        return {
+            "mode": "dual_switch_input",
+            "inputs": self.switch_statuses(),
+        }
+
+    def switch_statuses(self):
+        return [self._status(signal) for signal in ("a", "b")]
+
+    def event(self):
+        changes = []
+        for signal in self.changed_inputs:
+            change = self._status(signal)
+            change["previous"] = self.inputs[signal]["previous"]
+            changes.append(change)
+        return {
+            "port": self.port_number,
+            "changes": changes,
+        }
+
+    def safe_defaults(self):
+        pass
+
+    def command(self, command, now_ms):
+        log(
+            "port{}".format(self.port_number),
+            "ignored command for dual switch inputs {}".format(command),
+        )
+
+    def _status(self, signal):
+        input_state = self.inputs[signal]
+        data = {
+            "port": self.port_number,
+            "signal": signal,
+            "active": input_state["active"],
+        }
+        if input_state["prop"] is not None:
+            data["prop"] = input_state["prop"]
+        if input_state["sensor"] is not None:
+            data["sensor"] = input_state["sensor"]
+        return data
 
 
 class CandlePort:
@@ -648,9 +1206,22 @@ class MorseboardHardware:
                 continue
             rfid_metadata = config.RFID_INPUT_PORTS.get(port_number)
             switch_metadata = config.SWITCH_INPUT_PORTS.get(port_number)
+            dual_switch_metadata = config.DUAL_SWITCH_INPUT_PORTS.get(port_number)
             candle_metadata = config.CANDLE_PORTS.get(port_number)
             demon_knocker_metadata = config.DEMON_KNOCKER_PORTS.get(port_number)
-            if candle_metadata is not None:
+            latch_lock_metadata = config.LATCH_LOCK_PORTS.get(port_number)
+            cross_drop_metadata = config.CROSS_DROP_PORTS.get(port_number)
+            tof_metadata = config.TOF_PORTS.get(port_number)
+            if tof_metadata is not None:
+                self.ports.append(
+                    ToFPort(
+                        port_number,
+                        pair[0],
+                        pair[1],
+                        metadata=tof_metadata,
+                    )
+                )
+            elif candle_metadata is not None:
                 self.ports.append(
                     CandlePort(
                         port_number,
@@ -666,6 +1237,24 @@ class MorseboardHardware:
                         pair[0],
                         pair[1],
                         metadata=demon_knocker_metadata,
+                    )
+                )
+            elif latch_lock_metadata is not None:
+                self.ports.append(
+                    LatchLockPort(
+                        port_number,
+                        pair[0],
+                        pair[1],
+                        metadata=latch_lock_metadata,
+                    )
+                )
+            elif cross_drop_metadata is not None:
+                self.ports.append(
+                    CrossDropPort(
+                        port_number,
+                        pair[0],
+                        pair[1],
+                        metadata=cross_drop_metadata,
                     )
                 )
             elif rfid_metadata is not None:
@@ -686,6 +1275,15 @@ class MorseboardHardware:
                         metadata=switch_metadata,
                     )
                 )
+            elif dual_switch_metadata is not None:
+                self.ports.append(
+                    DualSwitchInputPort(
+                        port_number,
+                        pair[0],
+                        pair[1],
+                        metadata=dual_switch_metadata,
+                    )
+                )
             else:
                 self.ports.append(
                     PropPort(
@@ -699,17 +1297,26 @@ class MorseboardHardware:
     def _is_rfid_input(self, port):
         return isinstance(port, RFIDInputPort)
 
+    def _is_tof(self, port):
+        return isinstance(port, ToFPort)
+
     def _is_reserved(self, port):
         return isinstance(port, ReservedPort)
 
     def _is_switch_input(self, port):
-        return isinstance(port, SwitchInputPort)
+        return isinstance(port, (SwitchInputPort, DualSwitchInputPort, CrossDropPort))
+
+    def _is_cross_drop(self, port):
+        return isinstance(port, CrossDropPort)
 
     def _is_candle(self, port):
         return isinstance(port, CandlePort)
 
     def _is_demon_knocker(self, port):
         return isinstance(port, DemonKnockerPort)
+
+    def _is_latch_lock(self, port):
+        return isinstance(port, LatchLockPort)
 
     def set_power(self, enabled):
         if self.power_5v is None:
@@ -736,7 +1343,14 @@ class MorseboardHardware:
         if self._is_rfid_input(port):
             port.command(command, now_ms)
             return
+        if self._is_tof(port):
+            port.command(command, now_ms)
+            return
         if self._is_switch_input(port):
+            if self._is_cross_drop(port):
+                port.command(command, now_ms)
+                self.dirty = True
+                return
             port.command(command, now_ms)
             return
         if self._is_candle(port):
@@ -746,6 +1360,12 @@ class MorseboardHardware:
         if self._is_demon_knocker(port):
             port.command(command, now_ms)
             self.dirty = True
+            return
+        if self._is_latch_lock(port):
+            log(
+                "port{}".format(port_number),
+                "ignored generic command for latch-lock port",
+            )
             return
         self._apply_signal_command(port, "a", command.get("a"), now_ms)
         self._apply_signal_command(port, "b", command.get("b"), now_ms)
@@ -762,6 +1382,20 @@ class MorseboardHardware:
             self.dfplayer.play_track(command["play_track"])
         if command.get("stop"):
             self.dfplayer.stop()
+
+    def command_latch_lock(self, lock_label, command, now_ms):
+        if not command.get("open"):
+            log("latch_lock", "ignored lock {} command without open=true".format(lock_label))
+            return
+        for port in self.ports:
+            if self._is_latch_lock(port) and port.open_lock(
+                lock_label,
+                now_ms,
+                command.get("duration_ms"),
+            ):
+                self.dirty = True
+                return
+        log("latch_lock", "ignored unknown lock {}".format(lock_label))
 
     def reset_doorknob(self, now_ms):
         if self.doorknob is None:
@@ -930,12 +1564,17 @@ class MorseboardHardware:
         changed_rfid_ports = []
         changed_switch_ports = []
         changed_candle_ports = []
+        changed_tof_ports = []
         for port in self.ports:
             if port.update(now_ms):
                 changed = True
                 if self._is_rfid_input(port):
                     changed_rfid_ports.append(port)
-                elif self._is_switch_input(port):
+                elif self._is_tof(port):
+                    changed_tof_ports.append(port)
+                elif self._is_switch_input(port) and (
+                    not self._is_cross_drop(port) or port.reed_changed
+                ):
                     changed_switch_ports.append(port)
                 elif self._is_candle(port):
                     changed_candle_ports.append(port)
@@ -967,6 +1606,10 @@ class MorseboardHardware:
             event = port.event()
             event["candles"] = self.candle_statuses()
             self.events.append(("candle", event))
+        for port in changed_tof_ports:
+            event = port.event()
+            event["sensors"] = self.tof_statuses()
+            self.events.append(("tof", event))
         if changed:
             self.dirty = True
         return changed
@@ -995,10 +1638,17 @@ class MorseboardHardware:
         ]
 
     def switch_statuses(self):
+        statuses = []
+        for port in self.ports:
+            if self._is_switch_input(port):
+                statuses.extend(port.switch_statuses())
+        return statuses
+
+    def tof_statuses(self):
         return [
-            port.switch_status()
+            port.tof_status()
             for port in self.ports
-            if self._is_switch_input(port)
+            if self._is_tof(port)
         ]
 
     def consume_events(self):
@@ -1015,7 +1665,11 @@ class MorseboardHardware:
         rfid_readers = self.rfid_reader_statuses()
         candles = self.candle_statuses()
         switches = self.switch_statuses()
-        return {
+        latch_locks = []
+        for port in self.ports:
+            if self._is_latch_lock(port):
+                latch_locks.extend(port.lock_statuses())
+        state = {
             "prop_5v_enabled": (
                 bool(self.power_5v.value()) if self.power_5v is not None else None
             ),
@@ -1030,7 +1684,7 @@ class MorseboardHardware:
             },
             "candles": candles,
             "switches": switches,
-            "bookshelf": self.bookshelf.state() if self.bookshelf is not None else None,
+            "tof_sensors": self.tof_statuses(),
             "doorknob": self.doorknob.state() if self.doorknob is not None else None,
             "sequence": {
                 "active": self.sequence_phase is not None,
@@ -1039,6 +1693,11 @@ class MorseboardHardware:
                 "phase": self.sequence_phase,
             },
         }
+        if self.bookshelf is not None:
+            state["bookshelf"] = self.bookshelf.state()
+        if latch_locks:
+            state["latch_locks"] = latch_locks
+        return state
 
     def safe_defaults(self):
         if self.power_5v is not None:
@@ -1049,11 +1708,15 @@ class MorseboardHardware:
                 port.safe_defaults()
             elif self._is_rfid_input(port):
                 port.safe_defaults()
+            elif self._is_tof(port):
+                port.safe_defaults()
             elif self._is_switch_input(port):
                 port.safe_defaults()
             elif self._is_candle(port):
                 port.safe_defaults()
             elif self._is_demon_knocker(port):
+                port.safe_defaults()
+            elif self._is_latch_lock(port):
                 port.safe_defaults()
             else:
                 port.set_a(False)
