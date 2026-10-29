@@ -7,7 +7,7 @@ test/upload notes, see `docs/cmcm/board-status-log.md`.
 | --- | --- | --- | --- | --- | --- | --- |
 | `mb-001` | `firmware/morseboard/board_configs/mb_001.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-001` | MQTT-controlled candles on ports 1-2; demon seals RFID readers on ports 3-7. |
 | `mb-002` | `firmware/morseboard/board_configs/mb_002.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-002` | Demon knockers on ports 1-3 and 6-7; ports 4 and 5 are broken. |
-| `mb-003` | `firmware/morseboard/board_configs/mb_003.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-003` | Reserved. |
+| `mb-003` | `firmware/morseboard/board_configs/mb_003.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-003` | Beasts RFID readers on ports 1-4. |
 | `mb-004` | `firmware/morseboard/board_configs/mb_004.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-004` | Reserved. |
 | `mb-005` | `firmware/morseboard/board_configs/mb_005.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-005` | Reserved. |
 | `mb-006` | `firmware/morseboard/board_configs/mb_006.py` | Special screw-terminal W5500-EVB-Pico/Pico2 | Installed/networked | DHCP | `morseflow/prodigy/cmcm/mb-006` | Bookshelf on GPIO0-GPIO8; AS5600 safe dial on GPIO10/GPIO11. |
@@ -60,6 +60,20 @@ Use the logical MQTT targets `cmd/demon_knocker/<1-5>` and
 the physical ports above. Physical ports 4 and 5 are broken and must not be
 used; logical knockers/LEDs 4 and 5 are available through physical ports 6 and
 7.
+
+### MB-003
+
+MB-003 reads the four Beasts RFID PIBs. Signal A reports a wrong tag and
+Signal B reports the correct tag, following the existing RFID PIB wiring
+convention.
+
+| Port | Connected prop | Signal A | Signal B | MQTT role |
+| --- | --- | --- | --- | --- |
+| 1 | Beasts RFID reader 1 | Wrong-tag input | Correct-tag input | `beasts_1` / reader 1 |
+| 2 | Beasts RFID reader 2 | Wrong-tag input | Correct-tag input | `beasts_2` / reader 2 |
+| 3 | Beasts RFID reader 3 | Wrong-tag input | Correct-tag input | `beasts_3` / reader 3 |
+| 4 | Beasts RFID reader 4 | Wrong-tag input | Correct-tag input | `beasts_4` / reader 4 |
+| 5-8 | Not connected | Generic input/output | Generic input/output | Open |
 
 ### MB-007
 
