@@ -160,8 +160,13 @@ The retained board state reports configured locks under `state.latch_locks`.
 
 ## Doorknob Safe Events And Configuration
 
-MB6 polls the AS5600 angle sensor locally and does not publish continuous angle
-events. It publishes `doorknob` events only for accepted combination steps,
+MB6 polls the AS5600 angle sensor locally and publishes a `doorknob` event each
+time the dial crosses a 10-degree key point (0, 10, 20, and so on). These events
+have `reason: "angle"`; `key_angle_degrees` is the exact key point crossed and
+`angle_degrees` is the sampled sensor angle. Repeated samples around the same
+key point are suppressed until a different key point is crossed.
+
+It also publishes `doorknob` events for accepted combination steps,
 wrong-direction target arrivals, success, manual/automatic resets, configuration
 changes, and sensor errors or recovery. The latest angle remains available in
 the retained `state.doorknob` object and through `cmd/status`.

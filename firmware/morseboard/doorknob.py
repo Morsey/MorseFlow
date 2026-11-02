@@ -32,6 +32,7 @@ class DoorKnobPuzzle:
         self.raw_angle = None
         self.angle_degrees = None
         self.previous_angle = None
+        self.last_reported_key_angle = None
         self.next_poll_ms = ticks_ms()
         self.step_index = 0
         self.step_travel_degrees = 0.0
@@ -82,6 +83,17 @@ class DoorKnobPuzzle:
         if recovered:
             events.append(self._event("recovered"))
             changed = True
+
+        if self.previous_angle is not None:
+            for key_angle in self._crossed_key_angles(
+                self.previous_angle,
+                self.angle_degrees,
+            ):
+                if key_angle == self.last_reported_key_angle:
+                    continue
+                events.append(self._event("angle", key_angle_degrees=key_angle))
+                self.last_reported_key_angle = key_angle
+                changed = True
 
         if self.previous_angle is not None and not self.solved and self.sequence:
             event = self._process_rotation(now_ms)
@@ -328,6 +340,29 @@ class DoorKnobPuzzle:
         if self.angle_degrees is None:
             return None
         return round(self.angle_degrees, 2)
+
+    @classmethod
+    def _crossed_key_angles(cls, previous, current):
+        delta = cls._signed_difference(current, previous)
+        if delta == 0:
+            return ()
+
+        crossed = []
+        if delta > 0:
+            distance = (10.0 - (previous % 10.0)) % 10.0
+            if distance == 0:
+                distance = 10.0
+            while distance <= delta:
+                crossed.append(int(round((previous + distance) % 360.0)))
+                distance += 10.0
+        else:
+            distance = previous % 10.0
+            if distance == 0:
+                distance = 10.0
+            while distance <= -delta:
+                crossed.append(int(round((previous - distance) % 360.0)))
+                distance += 10.0
+        return crossed
 
     @staticmethod
     def _signed_difference(first, second):
