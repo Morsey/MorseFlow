@@ -8,13 +8,13 @@ test/upload notes, see `docs/cmcm/board-status-log.md`.
 | `mb-001` | `firmware/morseboard/board_configs/mb_001.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-001` | MQTT-controlled candles on ports 1-2; demon seals RFID readers on ports 3-7. |
 | `mb-002` | `firmware/morseboard/board_configs/mb_002.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-002` | Demon knockers on ports 1-3 and 6-7; cross drop on port 8; ports 4 and 5 are broken. |
 | `mb-003` | `firmware/morseboard/board_configs/mb_003.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-003` | Beasts RFID readers on ports 1-4; latch locks on ports 5-6; pull cord and vampire delay switch on port 7. |
-| `mb-004` | `firmware/morseboard/board_configs/mb_004.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-004` | Reserved. |
+| `mb-004` | `firmware/morseboard/board_configs/mb_004.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-004` | Twelve-pixel blue NeoPixel chase on port 1 Signal A. |
 | `mb-005` | `firmware/morseboard/board_configs/mb_005.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-005` | Reserved. |
 | `mb-006` | `firmware/morseboard/board_configs/mb_006.py` | Special screw-terminal W5500-EVB-Pico/Pico2 | Installed/networked | DHCP | `morseflow/prodigy/cmcm/mb-006` | Bookshelf on GPIO0-GPIO8; AS5600 safe dial on GPIO10/GPIO11. |
-| `mb-007` | `firmware/morseboard/board_configs/mb_007.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-007` | Candles on ports 1-3; IR changes publish over MQTT; outputs are controlled over MQTT. |
+| `mb-007` | `firmware/morseboard/board_configs/mb_007.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-007` | Candles on ports 1-3; BCDoor ToF sensor on port 4; IR changes publish over MQTT; outputs are controlled over MQTT. |
 | `mb-008` | `firmware/morseboard/board_configs/mb_008.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-008` | Reserved. |
 | `mb-009` | `firmware/morseboard/board_configs/mb_009.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-009` | Reserved. |
-| `mb-010` | `firmware/morseboard/board_configs/mb_010.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-010` | DFPlayer Mini; direct ToF sensors on ports 1-2; Hang the Dolls RFID readers on ports 5-7; Cross on Symbols sensor 2 on port 8. |
+| `mb-010` | `firmware/morseboard/board_configs/mb_010.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-010` | DFPlayer Mini; direct ToF sensors on ports 1-2; latch locks on port 3; Hang the Dolls RFID readers on ports 5-7; Cross on Symbols sensor 2 on port 8. |
 
 ## Connected Props
 
@@ -83,13 +83,19 @@ convention.
 | 8 | Not connected | Generic input/output | Generic input/output | Open |
 
 Latch locks 2, 13, and 12 are opened through `cmd/latch_lock/2`,
-`cmd/latch_lock/13`, and `cmd/latch_lock/12`. The default pulse is 100 ms, and
-firmware clamps every requested duration to the configured 1,000 ms safety
-limit.
+`cmd/latch_lock/13`, and `cmd/latch_lock/12`. The default timer pulse is 24 ms,
+and firmware clamps every request to a 25 ms maximum.
 
 The two port 7 inputs use internal pull-ups and 50 ms debounce. Their current
 values appear in the retained board state's `switches` list. Changes publish a
 live `switch` event containing the changed input and the status of both inputs.
+
+### MB-004
+
+Port 1 drives a string of 12 NeoPixels from Signal A. At startup, one blue
+pixel chases from pixel 1 through pixel 12 and repeats. One complete chase
+takes four seconds (0.25 Hz), so the active pixel advances approximately every
+333 ms. Signal B is held low and unused.
 
 ### MB-007
 
@@ -104,7 +110,7 @@ control until explicitly changed.
 | 1 | Candle 1 | Candle LED output | IR lit-detected input | `candle_1` |
 | 2 | Candle 2 | Candle LED output | IR lit-detected input | `candle_2` |
 | 3 | Candle 3 | Candle LED output | IR lit-detected input | `candle_3` |
-| 4 | Not connected | Unassigned | Unassigned | Open |
+| 4 | BCDoor VL53L0X | I2C0 SDA | I2C0 SCL | `bc_door` / `BCDoor` |
 | 5 | Not connected | Unassigned | Unassigned | Open |
 | 6 | Not connected | Unassigned | Unassigned | Open |
 | 7 | Not connected | Unassigned | Unassigned | Open |
@@ -146,6 +152,10 @@ Ports 5-7 are the Hang the Dolls RFID readers. They use the same RFID PIB
 wiring as MB-001: Signal A reports a wrong tag and Signal B reports the correct
 tag. All three readers have been verified on the bench.
 
+Port 3 drives two active-high latch-lock controllers. Signal A is lock 1 and
+Signal B is lock 2. Open them through `cmd/latch_lock/1` and
+`cmd/latch_lock/2`; each command produces a safety-capped 100 ms pulse.
+
 Port 8 is Cross on Symbols sensor 2, a dry-contact reed switch. Signal B uses
 an internal pull-up and becomes active when the switch closes to GND. Signal A
 is unused. Input changes are debounced for 50 ms and published over MQTT.
@@ -154,13 +164,14 @@ is unused. Input changes are debounced for 50 ms and published over MQTT.
 | --- | --- | --- | --- | --- |
 | 1 | TOF1 (VL53L0X) | I2C1 SDA | I2C1 SCL | `tof_1` / `TOF1` |
 | 2 | TOF2 (VL53L0X) | I2C0 SDA | I2C0 SCL | `tof_2` / `TOF2` |
-| 3-4 | Not connected | Generic input/output | Generic input/output | Open |
+| 3 | Latch-lock controllers | Lock 1, active-high pulse | Lock 2, active-high pulse | `latch_lock/1` and `latch_lock/2` |
+| 4 | Not connected | Generic input/output | Generic input/output | Open |
 | 5 | Doll 1 RFID reader | Wrong-tag input | Correct-tag input | `doll_1` / reader 1 |
 | 6 | Doll 2 RFID reader | Wrong-tag input | Correct-tag input | `doll_2` / reader 2 |
 | 7 | Doll 3 RFID reader | Wrong-tag input | Correct-tag input | `doll_3` / reader 3 |
 | 8 | Cross on Symbols sensor 2 | Unused | Reed-switch input, active-low | `cross_on_symbols_2` / sensor 2 |
 
-### MB-003 To MB-005 And MB-008 To MB-009
+### MB-005 And MB-008 To MB-009
 
 These boards are reserved. No connected props are currently recorded in their
 board config files.

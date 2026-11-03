@@ -1,5 +1,6 @@
-from machine import I2C, Pin
-from time import ticks_add, ticks_diff, ticks_ms
+from array import array
+from machine import I2C, Pin, Timer
+from time import ticks_add, ticks_diff, ticks_ms, ticks_us
 
 import config
 from bookshelf import BookshelfMatrix
@@ -115,6 +116,15 @@ class LatchLockPort:
         self.b = Pin(signal_b_pin, Pin.OUT)
         self.a_deadline = None
         self.b_deadline = None
+        self.a_started_us = None
+        self.b_started_us = None
+        self.a_ended_us = array("i", (0,))
+        self.b_ended_us = array("i", (0,))
+        self.a_timer_fired = False
+        self.b_timer_fired = False
+        self.completed_pulses = []
+        self.a_timer = Timer(-1)
+        self.b_timer = Timer(-1)
         self.default_pulse_ms = max(
             0,
             int(
@@ -149,35 +159,96 @@ class LatchLockPort:
 
     def update(self, now_ms):
         changed = False
-        if self.a_deadline is not None and ticks_diff(now_ms, self.a_deadline) >= 0:
-            self.a.value(0)
+        if self.a_timer_fired:
+            self.a_timer_fired = False
+            self._log_pulse_end("a", self.a_started_us, self.a_ended_us[0])
             self.a_deadline = None
+            self.a_started_us = None
             changed = True
-        if self.b_deadline is not None and ticks_diff(now_ms, self.b_deadline) >= 0:
-            self.b.value(0)
+        if self.b_timer_fired:
+            self.b_timer_fired = False
+            self._log_pulse_end("b", self.b_started_us, self.b_ended_us[0])
             self.b_deadline = None
+            self.b_started_us = None
             changed = True
         return changed
 
     def open_lock(self, lock_label, now_ms, duration_ms=None):
         signal = self._signal_for_lock(lock_label)
         if signal is None:
-            return False
+            return None
         if duration_ms is None:
             duration_ms = self.default_pulse_ms
         duration_ms = min(self.max_pulse_ms, max(0, int(duration_ms)))
+        if duration_ms == 0:
+            log(
+                "port{}".format(self.port_number),
+                "latch lock {} ignored zero-duration pulse".format(lock_label),
+            )
+            return 0
         pin = self.a if signal == "a" else self.b
+        was_high = bool(pin.value())
+        if was_high:
+            log(
+                "port{}".format(self.port_number),
+                "latch lock {} already active; ignoring overlapping pulse".format(lock_label),
+            )
+            return False
+        if signal == "a" and self.a_timer_fired:
+            self._log_pulse_end("a", self.a_started_us, self.a_ended_us[0])
+            self.a_timer_fired = False
+            self.a_started_us = None
+        elif signal == "b" and self.b_timer_fired:
+            self._log_pulse_end("b", self.b_started_us, self.b_ended_us[0])
+            self.b_timer_fired = False
+            self.b_started_us = None
+
+        timer = self.a_timer if signal == "a" else self.b_timer
+        timer_callback = self._timer_callback_a if signal == "a" else self._timer_callback_b
+        # Reserve 1 ms for arming the timer after GPIO goes high at the maximum;
+        # shorter requested pulses retain their requested timer period.
+        timer_period_ms = min(duration_ms, max(1, self.max_pulse_ms - 1))
+        started_us = ticks_us()
+        if signal == "a":
+            self.a_started_us = started_us
+            self.a_timer_fired = False
+        else:
+            self.b_started_us = started_us
+            self.b_timer_fired = False
         pin.value(1)
-        deadline = ticks_add(now_ms, duration_ms)
+        deadline = ticks_add(ticks_ms(), timer_period_ms)
         if signal == "a":
             self.a_deadline = deadline
         else:
             self.b_deadline = deadline
+        try:
+            timer.init(
+                period=timer_period_ms,
+                mode=Timer.ONE_SHOT,
+                callback=timer_callback,
+                hard=True,
+            )
+        except Exception as exc:
+            pin.value(0)
+            if signal == "a":
+                self.a_deadline = None
+                self.a_started_us = None
+            else:
+                self.b_deadline = None
+                self.b_started_us = None
+            log(
+                "port{}".format(self.port_number),
+                "latch lock {} timer setup failed; output released: {}".format(
+                    lock_label,
+                    repr(exc),
+                ),
+            )
+            return False
         log(
             "port{}".format(self.port_number),
-            "latch lock {} open pulse {} ms".format(lock_label, duration_ms),
+            "latch lock {} open pulse {} ms".format(lock_label, timer_period_ms),
         )
-        return True
+        return timer_period_ms
 
     def state(self):
         return {
@@ -204,10 +275,53 @@ class LatchLockPort:
         ]
 
     def safe_defaults(self):
+        self.a_timer.deinit()
+        self.b_timer.deinit()
         self.a.value(0)
         self.b.value(0)
         self.a_deadline = None
         self.b_deadline = None
+        self.a_started_us = None
+        self.b_started_us = None
+        self.a_timer_fired = False
+        self.b_timer_fired = False
+
+    def _timer_callback_a(self, _timer):
+        self.a.value(0)
+        self.a_ended_us[0] = ticks_us()
+        self.a_timer_fired = True
+
+    def _timer_callback_b(self, _timer):
+        self.b.value(0)
+        self.b_ended_us[0] = ticks_us()
+        self.b_timer_fired = True
+
+    def _log_pulse_end(self, signal, started_us, ended_us):
+        if started_us is None:
+            return None
+        lock_label = self.locks[signal]
+        elapsed_us = ticks_diff(ended_us, started_us)
+        log(
+            "port{}".format(self.port_number),
+            "latch lock {} signal {} actual HIGH time {} us".format(
+                lock_label if lock_label is not None else "unknown",
+                signal.upper(),
+                elapsed_us,
+            ),
+        )
+        self.completed_pulses.append({
+            "lock": lock_label,
+            "port": self.port_number,
+            "signal": signal,
+            "actual_pulse_us": elapsed_us,
+            "actual_pulse_ms": round(elapsed_us / 1000.0, 3),
+        })
+        return elapsed_us
+
+    def consume_completed_pulses(self):
+        completed = self.completed_pulses
+        self.completed_pulses = []
+        return completed
 
     def command(self, command, now_ms):
         lock_label = command.get("lock")
@@ -997,6 +1111,72 @@ class CandlePort:
         return self.lit.value() == config.CANDLE_SENSOR_TRIGGER_VALUE
 
 
+class NeoPixelChasePort:
+    def __init__(self, port_number, signal_a_pin, signal_b_pin, metadata=None):
+        from neopixel import NeoPixel
+
+        self.port_number = port_number
+        self.metadata = metadata or {}
+        self.data_signal = str(self.metadata.get("signal", "b")).lower()
+        if self.data_signal == "a":
+            self.pixel_data = Pin(signal_a_pin, Pin.OUT)
+            self.unused = Pin(signal_b_pin, Pin.OUT)
+        else:
+            self.data_signal = "b"
+            self.unused = Pin(signal_a_pin, Pin.OUT)
+            self.pixel_data = Pin(signal_b_pin, Pin.OUT)
+        self.pixel_count = max(1, int(self.metadata.get("pixel_count", 1)))
+        self.color = tuple(self.metadata.get("color", (0, 0, 255)))
+        cycle_hz = max(0.001, float(self.metadata.get("cycle_hz", 0.25)))
+        self.step_interval_ms = max(
+            1,
+            int(round(1000.0 / (cycle_hz * self.pixel_count))),
+        )
+        self.pixels = NeoPixel(self.pixel_data, self.pixel_count)
+        self.current_index = 0
+        self.next_step_ms = ticks_add(ticks_ms(), self.step_interval_ms)
+        self.safe_defaults()
+        log(
+            "port{}".format(self.port_number),
+            "NeoPixel chase initialized count={} cycle_hz={}".format(
+                self.pixel_count,
+                cycle_hz,
+            ),
+        )
+
+    def update(self, now_ms):
+        if ticks_diff(now_ms, self.next_step_ms) < 0:
+            return False
+        self.current_index = (self.current_index + 1) % self.pixel_count
+        self.next_step_ms = ticks_add(now_ms, self.step_interval_ms)
+        self._write()
+        return False
+
+    def state(self):
+        return {
+            "mode": "neopixel_chase",
+            "a": "neopixel" if self.data_signal == "a" else "unused",
+            "b": "neopixel" if self.data_signal == "b" else "unused",
+            "pixel_count": self.pixel_count,
+            "current_pixel": self.current_index + 1,
+            "color": list(self.color),
+            "step_interval_ms": self.step_interval_ms,
+            "prop": self.metadata.get("prop"),
+        }
+
+    def safe_defaults(self):
+        self.unused.value(0)
+        self.current_index = 0
+        self.next_step_ms = ticks_add(ticks_ms(), self.step_interval_ms)
+        self._write()
+
+    def _write(self):
+        off = (0, 0, 0)
+        for index in range(self.pixel_count):
+            self.pixels[index] = self.color if index == self.current_index else off
+        self.pixels.write()
+
+
 class DemonKnockerPort:
     def __init__(self, port_number, signal_a_pin, signal_b_pin, metadata=None):
         from neopixel import NeoPixel
@@ -1209,6 +1389,7 @@ class MorseboardHardware:
             dual_switch_metadata = config.DUAL_SWITCH_INPUT_PORTS.get(port_number)
             candle_metadata = config.CANDLE_PORTS.get(port_number)
             demon_knocker_metadata = config.DEMON_KNOCKER_PORTS.get(port_number)
+            neopixel_chase_metadata = config.NEOPIXEL_CHASE_PORTS.get(port_number)
             latch_lock_metadata = config.LATCH_LOCK_PORTS.get(port_number)
             cross_drop_metadata = config.CROSS_DROP_PORTS.get(port_number)
             tof_metadata = config.TOF_PORTS.get(port_number)
@@ -1237,6 +1418,15 @@ class MorseboardHardware:
                         pair[0],
                         pair[1],
                         metadata=demon_knocker_metadata,
+                    )
+                )
+            elif neopixel_chase_metadata is not None:
+                self.ports.append(
+                    NeoPixelChasePort(
+                        port_number,
+                        pair[0],
+                        pair[1],
+                        metadata=neopixel_chase_metadata,
                     )
                 )
             elif latch_lock_metadata is not None:
@@ -1315,6 +1505,9 @@ class MorseboardHardware:
     def _is_demon_knocker(self, port):
         return isinstance(port, DemonKnockerPort)
 
+    def _is_neopixel_chase(self, port):
+        return isinstance(port, NeoPixelChasePort)
+
     def _is_latch_lock(self, port):
         return isinstance(port, LatchLockPort)
 
@@ -1361,6 +1554,9 @@ class MorseboardHardware:
             port.command(command, now_ms)
             self.dirty = True
             return
+        if self._is_neopixel_chase(port):
+            log("port{}".format(port_number), "ignored command for NeoPixel chase")
+            return
         if self._is_latch_lock(port):
             log(
                 "port{}".format(port_number),
@@ -1388,13 +1584,28 @@ class MorseboardHardware:
             log("latch_lock", "ignored lock {} command without open=true".format(lock_label))
             return
         for port in self.ports:
-            if self._is_latch_lock(port) and port.open_lock(
-                lock_label,
-                now_ms,
-                command.get("duration_ms"),
-            ):
-                self.dirty = True
+            if not self._is_latch_lock(port):
+                continue
+            actual_duration_ms = port.open_lock(
+                lock_label, now_ms, command.get("duration_ms")
+            )
+            if actual_duration_ms is None:
+                continue
+            if actual_duration_ms is False:
                 return
+            signal = port._signal_for_lock(lock_label)
+            log(
+                "latch_lock",
+                "lock {} port {} signal {} pulse {} ms (requested {})".format(
+                    lock_label,
+                    port.port_number,
+                    signal.upper(),
+                    actual_duration_ms,
+                    "default" if command.get("duration_ms") is None else command.get("duration_ms"),
+                ),
+            )
+            self.dirty = True
+            return
         log("latch_lock", "ignored unknown lock {}".format(lock_label))
 
     def reset_doorknob(self, now_ms):
@@ -1578,6 +1789,9 @@ class MorseboardHardware:
                     changed_switch_ports.append(port)
                 elif self._is_candle(port):
                     changed_candle_ports.append(port)
+            if self._is_latch_lock(port):
+                for event in port.consume_completed_pulses():
+                    self.events.append(("latch_lock", event))
         if self.bookshelf is not None:
             bookshelf_changed, bookshelf_events = self.bookshelf.update(now_ms)
             if bookshelf_changed:
@@ -1715,6 +1929,8 @@ class MorseboardHardware:
             elif self._is_candle(port):
                 port.safe_defaults()
             elif self._is_demon_knocker(port):
+                port.safe_defaults()
+            elif self._is_neopixel_chase(port):
                 port.safe_defaults()
             elif self._is_latch_lock(port):
                 port.safe_defaults()

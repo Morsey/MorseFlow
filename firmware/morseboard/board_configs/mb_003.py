@@ -31,8 +31,8 @@ DEMON_KNOCKER_PORTS = {}
 
 # Port 5 drives two active-high latch locks. Pulse duration is capped in code
 # even when a longer duration is requested over MQTT.
-LATCH_LOCK_PULSE_MS = 100
-LATCH_LOCK_MAX_PULSE_MS = 1000
+LATCH_LOCK_PULSE_MS = 24
+LATCH_LOCK_MAX_PULSE_MS = 25
 LATCH_LOCK_PORTS = {
     5: {
         "prop": "latch_locks",

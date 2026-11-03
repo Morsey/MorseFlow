@@ -20,3 +20,14 @@ CANDLE_PORTS = {
 }
 
 RFID_INPUT_PORTS = {}
+
+# BCDoor distance sensor on port 4 (Signal A = I2C0 SDA, Signal B = I2C0 SCL).
+TOF_PORTS = {
+    4: {
+        "prop": "bc_door",
+        "sensor": "BCDoor",
+        "i2c_id": 0,
+        "near_threshold_mm": 300,
+        "report_delta_mm": 50,
+    },
+}

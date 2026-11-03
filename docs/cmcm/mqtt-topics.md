@@ -149,12 +149,25 @@ Payload:
 ```
 
 An optional `duration_ms` can request a different pulse duration. Firmware
-clamps all requests to `LATCH_LOCK_MAX_PULSE_MS`, which is configured as 1,000 ms
+clamps all requests to `LATCH_LOCK_MAX_PULSE_MS`, which is configured as 25 ms
 on MB3:
 
 ```json
-{"open": true, "duration_ms": 1000}
+{"open": true, "duration_ms": 25}
 ```
+
+Latch-lock pulses use a nonblocking one-shot timer to turn the selected output
+off. MB3 reserves 1 ms of margin at its 25 ms cap by arming the timer for at
+most 24 ms after the output goes high. A duration of zero does not energize the
+output.
+
+The USB REPL logs the timer duration when a command is accepted, then logs the
+measured HIGH time in microseconds when the timer turns the output LOW. The
+measurement includes timer interrupt latency.
+
+When the pulse ends, the board also publishes a `latch_lock` event on the
+board's `/event` topic. Its data includes `lock`, `port`, `signal`,
+`actual_pulse_us`, and `actual_pulse_ms`, measured from output HIGH to LOW.
 
 The retained board state reports configured locks under `state.latch_locks`.
 

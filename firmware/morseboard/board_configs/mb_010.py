@@ -51,3 +51,13 @@ SWITCH_INPUT_PORTS = {
 }
 CANDLE_PORTS = {}
 DEMON_KNOCKER_PORTS = {}
+
+# Port 3 drives two active-high latch-lock controllers. Each output is pulsed
+# for 100 ms and capped at 100 ms by the global latch-lock safety defaults.
+LATCH_LOCK_PORTS = {
+    3: {
+        "prop": "latch_locks",
+        "signal_a_lock": 1,
+        "signal_b_lock": 2,
+    },
+}
