@@ -1572,12 +1572,22 @@ class MorseboardHardware:
             log("audio", "ignored command; DFPlayer disabled")
             return
         log("audio", "command {}".format(command))
+        reported = {}
         if "volume" in command:
             self.dfplayer.set_volume(command["volume"])
+            reported["volume"] = max(0, min(30, int(command["volume"])))
         if "play_track" in command:
             self.dfplayer.play_track(command["play_track"])
+            reported["play_track"] = int(command["play_track"])
         if command.get("stop"):
             self.dfplayer.stop()
+            reported["stop"] = True
+        if reported:
+            self.events.append(("audio", {
+                "status": "command_sent",
+                "commands": reported,
+                "feedback": "UART command sent; playback state is not confirmed",
+            }))
 
     def command_latch_lock(self, lock_label, command, now_ms):
         if not command.get("open"):

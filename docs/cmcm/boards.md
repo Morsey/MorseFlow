@@ -11,7 +11,7 @@ test/upload notes, see `docs/cmcm/board-status-log.md`.
 | `mb-004` | `firmware/morseboard/board_configs/mb_004.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-004` | Twelve-pixel blue NeoPixel chase on port 1 Signal A. |
 | `mb-005` | `firmware/morseboard/board_configs/mb_005.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-005` | Reserved. |
 | `mb-006` | `firmware/morseboard/board_configs/mb_006.py` | Special screw-terminal W5500-EVB-Pico/Pico2 | Installed/networked | DHCP | `morseflow/prodigy/cmcm/mb-006` | Bookshelf on GPIO0-GPIO8; AS5600 safe dial on GPIO10/GPIO11. |
-| `mb-007` | `firmware/morseboard/board_configs/mb_007.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-007` | Candles on ports 1-3; BCDoor ToF sensor on port 4; IR changes publish over MQTT; outputs are controlled over MQTT. |
+| `mb-007` | `firmware/morseboard/board_configs/mb_007.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-007` | DFPlayer audio controlled over MQTT; candles on ports 1-3; BCDoor ToF sensor on port 4; latch lock on port 5; IR changes publish over MQTT. |
 | `mb-008` | `firmware/morseboard/board_configs/mb_008.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-008` | Reserved. |
 | `mb-009` | `firmware/morseboard/board_configs/mb_009.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-009` | Reserved. |
 | `mb-010` | `firmware/morseboard/board_configs/mb_010.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-010` | DFPlayer Mini; direct ToF sensors on ports 1-2; latch locks on port 3; Hang the Dolls RFID readers on ports 5-7; Cross on Symbols sensor 2 on port 8. |
@@ -111,10 +111,13 @@ control until explicitly changed.
 | 2 | Candle 2 | Candle LED output | IR lit-detected input | `candle_2` |
 | 3 | Candle 3 | Candle LED output | IR lit-detected input | `candle_3` |
 | 4 | BCDoor VL53L0X | I2C0 SDA | I2C0 SCL | `bc_door` / `BCDoor` |
-| 5 | Not connected | Unassigned | Unassigned | Open |
+| 5 | Latch lock | Lock 1, active-high pulse | Unused | `latch_lock/1` |
 | 6 | Not connected | Unassigned | Unassigned | Open |
 | 7 | Not connected | Unassigned | Unassigned | Open |
 | 8 | Not connected | Unassigned | Unassigned | Open |
+
+Open the MB-007 latch lock through `cmd/latch_lock/1`. It uses the board's
+default 100 ms pulse and 100 ms maximum.
 
 ### MB-006
 

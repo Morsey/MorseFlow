@@ -1,5 +1,6 @@
 BOARD_ID = "mb-007"
 MQTT_ENABLED = True
+DFPLAYER_ENABLED = True
 CANDLE_STARTUP_PULSE_MS = 0
 CANDLE_AUTO_TRIGGER_ENABLED = False
 CANDLE_TRIGGER_ON_ACTIVE = False
@@ -29,5 +30,13 @@ TOF_PORTS = {
         "i2c_id": 0,
         "near_threshold_mm": 300,
         "report_delta_mm": 50,
+    },
+}
+
+# Single latch-lock controller on port 5, Signal A.
+LATCH_LOCK_PORTS = {
+    5: {
+        "prop": "latch_lock",
+        "signal_a_lock": 1,
     },
 }

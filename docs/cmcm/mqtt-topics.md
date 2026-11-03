@@ -21,7 +21,7 @@ morseflow/prodigy/cmcm/mb-001
 | Prop/input events | `morseflow/prodigy/cmcm/mb-001/event` |
 | Switched 5V command | `morseflow/prodigy/cmcm/mb-001/cmd/power` |
 | Relay command | `morseflow/prodigy/cmcm/mb-001/cmd/relay` |
-| Audio command | `morseflow/prodigy/cmcm/mb-001/cmd/audio` |
+| Audio command | `morseflow/prodigy/cmcm/<board-id>/cmd/audio` |
 | Knock sequence command | `morseflow/prodigy/cmcm/mb-001/cmd/sequence` |
 | Status request | `morseflow/prodigy/cmcm/mb-001/cmd/status` |
 | Port command | `morseflow/prodigy/cmcm/mb-001/cmd/port/<n>` |
@@ -421,3 +421,19 @@ Play DFPlayer track 1:
 ```json
 {"play_track": 1}
 ```
+
+MB-007 has a DFPlayer on UART0 (GPIO0 TX, GPIO1 RX). Set its volume, play a
+track, or stop playback with `cmd/audio`. For example:
+
+```json
+{"volume": 20}
+```
+
+```json
+{"stop": true}
+```
+
+Each valid command publishes an `audio` event on the board's `/event` topic
+with `status: "command_sent"` and the command values. This confirms that the
+firmware sent the UART command; the current driver does not confirm the
+DFPlayer's playback state.
