@@ -3,6 +3,10 @@
 Use this log for field status notes after upload or bench testing. Record the
 software commit and whether local uncommitted changes were included.
 
+Entries are retained as dated observations and may describe wiring that was
+later changed. Use `boards.md`, `props.md`, and the current board config files
+for the active assignments.
+
 ## 2026-10-29
 
 ### mb-006

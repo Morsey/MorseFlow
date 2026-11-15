@@ -32,9 +32,17 @@ Prop Interface Boards:
 - May be passive/simple boards or smart RP2040 Zero-class boards.
 - Should prefer simple two-line status outputs where possible.
 
+Standalone controllers:
+
+- Handle focused hardware that does not connect through a Morseboard prop port.
+- May expose a small local HTTP API when direct LAN control is useful.
+- Must retain local physical control when their network is unavailable.
+
 ## Network Model
 
-Morseboards are wired Ethernet devices. Wi-Fi is intentionally out of scope.
+Morseboards are wired Ethernet devices; Wi-Fi remains intentionally out of
+scope for the shared Morseboard runtime. Standalone controllers such as the
+Pico W Temple Display may use Wi-Fi for their own local control API.
 Use W5500-enabled MicroPython firmware matched to the exact board:
 
 - WIZnet W5500-EVB-Pico for Pico 1.

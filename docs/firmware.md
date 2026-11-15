@@ -2,7 +2,7 @@
 
 ## Morseboard Firmware
 
-The firmware skeleton in `firmware/morseboard/` is written for MicroPython.
+The shared firmware in `firmware/morseboard/` is written for MicroPython.
 It assumes a W5500-enabled firmware build for the specific WIZnet board.
 
 Main modules:
@@ -20,6 +20,15 @@ Main modules:
 - `mqtt_client.py` - bundled lightweight MQTT client.
 - `mqtt_service.py` - MQTT connection, subscriptions, LWT, reconnect, and dispatch.
 - `messages.py` - JSON command parsing and response payload helpers.
+
+## Standalone PIB Firmware
+
+`firmware/pib/` also contains focused controllers that run independently of the
+shared Morseboard runtime. The Temple Display controller is a single-file Pico
+W application that controls a MedeaWiz Sprite 4K over TTL UART, reads six local
+buttons, and exposes a small HTTP interface for LAN control. Its wiring,
+deployment, serial protocol, and API are documented in
+`firmware/pib/temple_display/README.md`.
 
 ## Non-Blocking Rules
 

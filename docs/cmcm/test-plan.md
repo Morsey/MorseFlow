@@ -5,7 +5,7 @@ Use this checklist as each board and prop is brought online.
 ## Board Bring-Up
 
 - Board boots with all prop signals low.
-- Switched 5V is off at boot.
+- Switched 5V matches the board profile; the shared production default is on.
 - Optional relay is off at boot.
 - USB REPL remains available during development.
 - App reports network connected with assigned IP.

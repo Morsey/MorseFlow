@@ -1,6 +1,6 @@
 # Morseboard Firmware
 
-MicroPython skeleton for MorseFlow controller boards.
+Shared MicroPython runtime for MorseFlow controller boards.
 
 ## Target Boards
 
@@ -60,7 +60,8 @@ needing nested folder support.
 ## Behavior
 
 - Boots to safe defaults.
-- Keeps switched 5V off by default.
+- Enables switched 5V at boot by default for installed props; individual board
+  profiles can disable prop-power control or change the startup state.
 - Keeps optional relay off by default.
 - Keeps all prop signal outputs low by default.
 - Uses state-machine updates for timed prop pulses.

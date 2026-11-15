@@ -1,14 +1,15 @@
 # MorseFlow
 
-MorseFlow is a wired MQTT-based escape room prop control framework.
-Node-RED owns the main room/game logic and talks through an MQTT broker
-to Morseboard controller boards.
+MorseFlow is an escape-room prop control system. Node-RED owns the main room
+and game logic and talks through an MQTT broker to wired Morseboard controller
+boards. Standalone Prop Interface Boards may also provide focused local or
+Wi-Fi-controlled functions.
 
 ## Project Layout
 
 - `docs/` - hardware, architecture, MQTT, and firmware notes.
-- `firmware/morseboard/` - MicroPython skeleton for WIZnet W5500-EVB-Pico and Pico2 Morseboards.
-- `firmware/pib/rfid_reader/` - starter firmware notes/code for smart RFID Prop Interface Boards.
+- `firmware/morseboard/` - shared MicroPython runtime and per-board profiles for WIZnet W5500-EVB-Pico and Pico2 Morseboards.
+- `firmware/pib/` - standalone and prop-specific MicroPython controllers, including RFID, displays, sensors, and puzzles.
 - `examples/` - sample configuration files and MQTT payloads.
 - `node-red/flows/` - starter Node-RED flow examples.
 
@@ -25,7 +26,7 @@ stored in this repository.
 
 - Morseboards use WIZnet W5500-EVB-Pico or W5500-EVB-Pico2 boards.
 - Firmware is MicroPython with board-specific W5500 Ethernet support.
-- No Wi-Fi.
+- Morseboards use wired Ethernet and do not use Wi-Fi.
 - W5500 Ethernet pins are reserved: GPIO16-GPIO21.
 - DFPlayer Mini: GPIO0 to DFPlayer RX, GPIO1 to DFPlayer TX.
 - GPIO15 controls switched 5V prop power, normally enabled at boot and used for prop reset/recovery.
@@ -35,10 +36,15 @@ stored in this repository.
 
 ## Current Status
 
-This repository is an initial scaffold. The Morseboard firmware is structured
-around non-blocking state-machine updates using `time.ticks_ms()`. It includes
-safe IO defaults, timed prop pulses, MQTT reconnect hooks, status publishing,
-and simple DFPlayer command support.
+The shared Morseboard firmware is deployed through profiles for MB-001 through
+MB-010. It uses non-blocking state machines for safe GPIO control, timed pulses,
+RFID and switch inputs, candles, NeoPixels, latch locks, ToF sensors, bookshelf
+and doorknob puzzles, DFPlayer audio, Ethernet recovery, MQTT commands, retained
+state, and live events.
+
+Standalone PIB firmware includes the Pico W Temple Display controller, which
+drives a MedeaWiz Sprite 4K over TTL serial from physical buttons or a small
+HTTP control interface. See `firmware/pib/temple_display/README.md`.
 
 ## AI Assistance
 

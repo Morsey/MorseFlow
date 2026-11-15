@@ -36,7 +36,28 @@ from the Morseboard.
 | 5 | Unavailable | Unavailable | Do not use | None | Broken port |
 | 6 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 4, no PIB firmware | Bench test |
 | 7 | Solenoid output | NeoPixel data output | Switched 5V normally on, 12V always live | Demon knocker 5, no PIB firmware | Bench test |
-| 8 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
+| 8 | Cross-drop solenoid output | Active-low reed-switch input | Switched 5V normally on, 12V always live | Cross drop | Configured |
+
+## MB-003
+
+MB-003 reads the four Beasts RFID PIBs, drives three latch locks, and reads two
+active-low puzzle switches. Latch commands are safety-capped by firmware.
+
+| Port | Signal A | Signal B | Prop Power | Prop / PIB | Status |
+| --- | --- | --- | --- | --- | --- |
+| 1 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Beasts reader 1 | Configured |
+| 2 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Beasts reader 2 | Configured |
+| 3 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Beasts reader 3 | Configured |
+| 4 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Beasts reader 4 | Configured |
+| 5 | Latch lock 2 | Latch lock 13 | Switched 5V normally on, 12V always live | Latch locks | Configured |
+| 6 | Latch lock 12 | Unused | Switched 5V normally on, 12V always live | Latch lock | Configured |
+| 7 | Pull-cord input | Vampire-delay input | Switched 5V normally on, 12V always live | Puzzle switches | Configured |
+| 8 | Unassigned | Unassigned | Switched 5V normally on, 12V always live | None | Open |
+
+## MB-004
+
+MB-004 drives a 12-pixel blue NeoPixel chase from port 1 Signal A. Signal B is
+unused and held low.
 
 ## MB-007
 
@@ -51,8 +72,8 @@ topic.
 | 1 | Candle LED output | IR lit-detected input | Switched 5V normally on, 12V always live | Candle 1 | Configured |
 | 2 | Candle LED output | IR lit-detected input | Switched 5V normally on, 12V always live | Candle 2 | Configured |
 | 3 | Candle LED output | IR lit-detected input | Switched 5V normally on, 12V always live | Candle 3 | Configured |
-| 4 | Unassigned | Unassigned | Switched 5V normally on, 12V always live | TBD | Open |
-| 5 | Unassigned | Unassigned | Switched 5V normally on, 12V always live | TBD | Open |
+| 4 | I2C0 SDA | I2C0 SCL | Switched 5V normally on, 12V always live | BCDoor VL53L0X | Configured |
+| 5 | Latch lock 1 | Unused | Switched 5V normally on, 12V always live | Latch-lock controller | Configured |
 | 6 | Unassigned | Unassigned | Switched 5V normally on, 12V always live | TBD | Open |
 | 7 | Unassigned | Unassigned | Switched 5V normally on, 12V always live | TBD | Open |
 | 8 | Unassigned | Unassigned | Switched 5V normally on, 12V always live | TBD | Open |
@@ -85,7 +106,7 @@ dedicated UART pins and does not consume an RJ45 port.
 | --- | --- | --- | --- | --- | --- |
 | 1 | I2C1 SDA | I2C1 SCL | Switched 5V normally on, 12V always live | TOF1 VL53L0X | Configured |
 | 2 | I2C0 SDA | I2C0 SCL | Switched 5V normally on, 12V always live | TOF2 VL53L0X | Configured |
-| 3 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
+| 3 | Latch lock 1 | Latch lock 2 | Switched 5V normally on, 12V always live | Latch-lock controllers | Configured |
 | 4 | Generic output | Generic output | Switched 5V normally on, 12V always live | None | Open |
 | 5 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Doll 1 RFID reader | Bench tested |
 | 6 | RFID wrong-tag input | RFID correct-tag input | Switched 5V normally on, 12V always live | Doll 2 RFID reader | Bench tested |
