@@ -11,8 +11,16 @@ from dfplayer import DFPlayer
 
 
 class PropPort:
-    def __init__(self, port_number, signal_a_pin, signal_b_pin, initial_high=False):
+    def __init__(
+        self,
+        port_number,
+        signal_a_pin,
+        signal_b_pin,
+        initial_high=False,
+        metadata=None,
+    ):
         self.port_number = port_number
+        self.metadata = metadata or {}
         self.a = Pin(signal_a_pin, Pin.OUT)
         self.b = Pin(signal_b_pin, Pin.OUT)
         self.a_deadline = None
@@ -20,9 +28,9 @@ class PropPort:
         self.test_step = None
         self.test_deadline = None
         self.test_duration_ms = 500
-        initial = 1 if initial_high else 0
-        self.a.value(initial)
-        self.b.value(initial)
+        self.initial_a = bool(self.metadata.get("initial_a", initial_high))
+        self.initial_b = bool(self.metadata.get("initial_b", initial_high))
+        self.safe_defaults()
 
     def set_a(self, enabled):
         self.a_deadline = None
@@ -76,7 +84,7 @@ class PropPort:
         return changed
 
     def state(self):
-        return {
+        state = {
             "mode": "output",
             "a": bool(self.a.value()),
             "b": bool(self.b.value()),
@@ -85,6 +93,25 @@ class PropPort:
             "pin_test_active": self.test_step is not None,
             "pin_test_step": self.test_step,
         }
+        prop = self.metadata.get("prop")
+        if prop is not None:
+            state["prop"] = prop
+        signal_a = self.metadata.get("signal_a")
+        signal_b = self.metadata.get("signal_b")
+        if signal_a is not None:
+            state["signal_a"] = signal_a
+            state[str(signal_a)] = bool(self.a.value())
+        if signal_b is not None:
+            state["signal_b"] = signal_b
+            state[str(signal_b)] = bool(self.b.value())
+        return state
+
+    def safe_defaults(self):
+        self.a_deadline = None
+        self.b_deadline = None
+        self._cancel_pin_test()
+        self.a.value(1 if self.initial_a else 0)
+        self.b.value(1 if self.initial_b else 0)
 
     def _advance_test(self, now_ms):
         if self.test_step == "a":
@@ -1126,39 +1153,127 @@ class NeoPixelChasePort:
             self.unused = Pin(signal_a_pin, Pin.OUT)
             self.pixel_data = Pin(signal_b_pin, Pin.OUT)
         self.pixel_count = max(1, int(self.metadata.get("pixel_count", 1)))
+        self.step_count = max(
+            1,
+            min(self.pixel_count, int(self.metadata.get("step_count", self.pixel_count))),
+        )
+        self.reverse_second_bank = bool(self.metadata.get("reverse_second_bank", False))
+        second_bank_order = self.metadata.get("second_bank_order")
+        self.second_bank_order = (
+            tuple(int(number) for number in second_bank_order)
+            if second_bank_order is not None
+            else None
+        )
         self.color = tuple(self.metadata.get("color", (0, 0, 255)))
         cycle_hz = max(0.001, float(self.metadata.get("cycle_hz", 0.25)))
         self.step_interval_ms = max(
             1,
-            int(round(1000.0 / (cycle_hz * self.pixel_count))),
+            int(round(1000.0 / (cycle_hz * self.step_count))),
         )
         self.pixels = NeoPixel(self.pixel_data, self.pixel_count)
         self.current_index = 0
+        self.mode = "off"
+        self.position_colors = [(0, 0, 0)] * self.step_count
+        self.flash_deadlines = [None] * self.step_count
         self.next_step_ms = ticks_add(ticks_ms(), self.step_interval_ms)
         self.safe_defaults()
         log(
             "port{}".format(self.port_number),
-            "NeoPixel chase initialized count={} cycle_hz={}".format(
+            "NeoPixel chase initialized count={} steps={} cycle_hz={}".format(
                 self.pixel_count,
+                self.step_count,
                 cycle_hz,
             ),
         )
 
     def update(self, now_ms):
-        if ticks_diff(now_ms, self.next_step_ms) < 0:
-            return False
-        self.current_index = (self.current_index + 1) % self.pixel_count
-        self.next_step_ms = ticks_add(now_ms, self.step_interval_ms)
-        self._write()
-        return False
+        changed = False
+        if self.mode == "test_flash" and ticks_diff(now_ms, self.next_step_ms) >= 0:
+            self.current_index = (self.current_index + 1) % self.step_count
+            self.next_step_ms = ticks_add(now_ms, self.step_interval_ms)
+            changed = True
+        for index, deadline in enumerate(self.flash_deadlines):
+            if deadline is not None and ticks_diff(now_ms, deadline) >= 0:
+                self.flash_deadlines[index] = None
+                self.position_colors[index] = (0, 0, 0)
+                changed = True
+        if changed:
+            self._write()
+        return changed
+
+    def command(self, command, now_ms):
+        if "test_flash" in command:
+            value = command["test_flash"]
+            if value is True or str(value).lower() in ("start", "on", "true"):
+                self._start_test_flash(now_ms)
+            else:
+                self.all_off()
+            return
+        if "test_image" in command:
+            value = str(command["test_image"]).lower()
+            if value in ("rgb", "rgb_alternating", "on", "true"):
+                self._show_rgb_test()
+            else:
+                self.all_off()
+            return
+        if command.get("test_off") or command.get("all_off"):
+            self.all_off()
+            return
+
+        color = self._color(command.get("color", self.color))
+        flash_numbers = command.get("flash_numbers", command.get("flash_number"))
+        if flash_numbers is not None:
+            duration_ms = max(0, int(command.get("duration_ms", 1000)))
+            self._leave_test_mode()
+            for number in self._numbers(flash_numbers):
+                index = number - 1
+                self.position_colors[index] = color
+                self.flash_deadlines[index] = ticks_add(now_ms, duration_ms)
+            self.mode = "numbers"
+            self._write()
+
+        numbers_on = command.get("numbers_on", command.get("number_on"))
+        if numbers_on is not None:
+            self._leave_test_mode()
+            for number in self._numbers(numbers_on):
+                index = number - 1
+                self.position_colors[index] = color
+                self.flash_deadlines[index] = None
+            self.mode = "numbers"
+            self._write()
+
+        numbers_off = command.get("numbers_off", command.get("number_off"))
+        if numbers_off is not None:
+            self._leave_test_mode()
+            for number in self._numbers(numbers_off):
+                index = number - 1
+                self.position_colors[index] = (0, 0, 0)
+                self.flash_deadlines[index] = None
+            self.mode = "numbers"
+            self._write()
 
     def state(self):
         return {
-            "mode": "neopixel_chase",
+            "mode": self.mode,
             "a": "neopixel" if self.data_signal == "a" else "unused",
             "b": "neopixel" if self.data_signal == "b" else "unused",
             "pixel_count": self.pixel_count,
+            "step_count": self.step_count,
+            "reverse_second_bank": self.reverse_second_bank,
+            "second_bank_order": (
+                list(self.second_bank_order) if self.second_bank_order is not None else None
+            ),
             "current_pixel": self.current_index + 1,
+            "numbers_on": [
+                index + 1
+                for index, color in enumerate(self.position_colors)
+                if color != (0, 0, 0)
+            ],
+            "flashing_numbers": [
+                index + 1
+                for index, deadline in enumerate(self.flash_deadlines)
+                if deadline is not None
+            ],
             "color": list(self.color),
             "step_interval_ms": self.step_interval_ms,
             "prop": self.metadata.get("prop"),
@@ -1166,14 +1281,67 @@ class NeoPixelChasePort:
 
     def safe_defaults(self):
         self.unused.value(0)
+        self.mode = "off"
         self.current_index = 0
+        self.position_colors = [(0, 0, 0)] * self.step_count
+        self.flash_deadlines = [None] * self.step_count
         self.next_step_ms = ticks_add(ticks_ms(), self.step_interval_ms)
         self._write()
 
+    def all_off(self):
+        self.safe_defaults()
+
+    def _start_test_flash(self, now_ms):
+        self.mode = "test_flash"
+        self.current_index = 0
+        self.position_colors = [(0, 0, 0)] * self.step_count
+        self.flash_deadlines = [None] * self.step_count
+        self.next_step_ms = ticks_add(now_ms, self.step_interval_ms)
+        self._write()
+
+    def _show_rgb_test(self):
+        colors = ((255, 0, 0), (0, 255, 0), (0, 0, 255))
+        self.mode = "test_rgb"
+        self.position_colors = [colors[index % 3] for index in range(self.step_count)]
+        self.flash_deadlines = [None] * self.step_count
+        self._write()
+
+    def _leave_test_mode(self):
+        if self.mode in ("test_flash", "test_rgb", "off"):
+            self.position_colors = [(0, 0, 0)] * self.step_count
+            self.flash_deadlines = [None] * self.step_count
+
+    def _numbers(self, value):
+        values = value if isinstance(value, (list, tuple)) else (value,)
+        numbers = []
+        for item in values:
+            number = int(item)
+            if 1 <= number <= self.step_count and number not in numbers:
+                numbers.append(number)
+        return numbers
+
+    def _color(self, value):
+        if not isinstance(value, (list, tuple)) or len(value) != 3:
+            return self.color
+        return tuple(max(0, min(255, int(component))) for component in value)
+
+    def _position_for_pixel(self, index):
+        if self.second_bank_order is not None and index >= self.step_count:
+            bank_index = index - self.step_count
+            if bank_index < len(self.second_bank_order):
+                return self.second_bank_order[bank_index] - 1
+        if self.reverse_second_bank and index >= self.step_count:
+            return self.pixel_count - 1 - index
+        return index % self.step_count
+
     def _write(self):
-        off = (0, 0, 0)
         for index in range(self.pixel_count):
-            self.pixels[index] = self.color if index == self.current_index else off
+            position = self._position_for_pixel(index)
+            if self.mode == "test_flash":
+                color = self.color if position == self.current_index else (0, 0, 0)
+            else:
+                color = self.position_colors[position]
+            self.pixels[index] = color
         self.pixels.write()
 
 
@@ -1390,6 +1558,7 @@ class MorseboardHardware:
             candle_metadata = config.CANDLE_PORTS.get(port_number)
             demon_knocker_metadata = config.DEMON_KNOCKER_PORTS.get(port_number)
             neopixel_chase_metadata = config.NEOPIXEL_CHASE_PORTS.get(port_number)
+            output_metadata = config.OUTPUT_PORTS.get(port_number)
             latch_lock_metadata = config.LATCH_LOCK_PORTS.get(port_number)
             cross_drop_metadata = config.CROSS_DROP_PORTS.get(port_number)
             tof_metadata = config.TOF_PORTS.get(port_number)
@@ -1481,6 +1650,7 @@ class MorseboardHardware:
                         pair[0],
                         pair[1],
                         initial_high=config.PORT_SIGNALS_HIGH_AT_BOOT,
+                        metadata=output_metadata,
                     )
                 )
 
@@ -1555,7 +1725,8 @@ class MorseboardHardware:
             self.dirty = True
             return
         if self._is_neopixel_chase(port):
-            log("port{}".format(port_number), "ignored command for NeoPixel chase")
+            port.command(command, now_ms)
+            self.dirty = True
             return
         if self._is_latch_lock(port):
             log(
@@ -1563,8 +1734,20 @@ class MorseboardHardware:
                 "ignored generic command for latch-lock port",
             )
             return
-        self._apply_signal_command(port, "a", command.get("a"), now_ms)
-        self._apply_signal_command(port, "b", command.get("b"), now_ms)
+        signal_a_name = port.metadata.get("signal_a")
+        signal_b_name = port.metadata.get("signal_b")
+        value_a = (
+            command.get(signal_a_name)
+            if signal_a_name is not None and signal_a_name in command
+            else command.get("a")
+        )
+        value_b = (
+            command.get(signal_b_name)
+            if signal_b_name is not None and signal_b_name in command
+            else command.get("b")
+        )
+        self._apply_signal_command(port, "a", value_a, now_ms)
+        self._apply_signal_command(port, "b", value_b, now_ms)
         self.dirty = True
 
     def command_audio(self, command):
@@ -1945,8 +2128,7 @@ class MorseboardHardware:
             elif self._is_latch_lock(port):
                 port.safe_defaults()
             else:
-                port.set_a(False)
-                port.set_b(False)
+                port.safe_defaults()
         if self.bookshelf is not None:
             self.bookshelf.safe_defaults()
         if self.doorknob is not None:

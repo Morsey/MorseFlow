@@ -271,6 +271,58 @@ An optional duration keeps timed operation available:
 {"on": true, "duration_ms": 5000}
 ```
 
+## MB4 Clock Commands
+
+MB4 port 8 controls the clock face. LEDs 1-12 are the inner positions 1-12;
+LEDs 13-24 are the matching outer positions. The LEDs remain off at boot. Send
+commands to:
+
+```text
+morseflow/prodigy/cmcm/mb-004/cmd/port/8
+```
+
+Start or stop the 0.25 Hz blue chase test:
+
+```json
+{"test_flash":"start"}
+```
+
+```json
+{"test_flash":"stop"}
+```
+
+Show a static repeating red, green, blue test image, or clear any test image:
+
+```json
+{"test_image":"rgb"}
+```
+
+```json
+{"test_off":true}
+```
+
+Light one or more numbers for a duration in milliseconds:
+
+```json
+{"flash_numbers":[3,6,9,12],"duration_ms":1500,"color":[255,255,255]}
+```
+
+Turn numbers on until explicitly turned off:
+
+```json
+{"numbers_on":[1,5,10],"color":[0,0,255]}
+```
+
+```json
+{"numbers_off":[1,5]}
+```
+
+Turn off the entire clock display:
+
+```json
+{"all_off":true}
+```
+
 ## Demon Knocker Commands
 
 MB2 port 8 controls the cross drop. Signal A is the solenoid output and Signal

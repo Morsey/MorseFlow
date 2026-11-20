@@ -60,6 +60,18 @@ DEMON_KNOCKER_PORTS = {
     # },
 }
 
+# Maintained digital outputs. Generic port commands set A and B independently;
+# initial_a and initial_b are also restored by safe_defaults.
+OUTPUT_PORTS = {
+    # 7: {
+    #     "prop": "door_deadbolts",
+    #     "signal_a": "door_1",
+    #     "signal_b": "door_2",
+    #     "initial_a": True,
+    #     "initial_b": True,
+    # },
+}
+
 # Dual active-high latch-lock outputs. Commands use cmd/latch_lock/<label>.
 # Requested durations are always clamped to max_pulse_ms.
 LATCH_LOCK_PORTS = {

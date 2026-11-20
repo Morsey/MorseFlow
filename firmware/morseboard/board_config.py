@@ -1,42 +1,30 @@
-BOARD_ID = "mb-007"
-MQTT_ENABLED = True
-DFPLAYER_ENABLED = True
-CANDLE_STARTUP_PULSE_MS = 0
-CANDLE_AUTO_TRIGGER_ENABLED = False
-CANDLE_TRIGGER_ON_ACTIVE = False
-
-CANDLE_PORTS = {
-    1: {
-        "prop": "candle_1",
-        "candle": 1,
-    },
-    2: {
-        "prop": "candle_2",
-        "candle": 2,
-    },
-    3: {
-        "prop": "candle_3",
-        "candle": 3,
-    },
-}
+BOARD_ID = "mb-004"
+PROP_5V_ENABLED_AT_BOOT = True
 
 RFID_INPUT_PORTS = {}
 
-# BCDoor distance sensor on port 4 (Signal A = I2C0 SDA, Signal B = I2C0 SCL).
-TOF_PORTS = {
-    4: {
-        "prop": "bc_door",
-        "sensor": "BCDoor",
-        "i2c_id": 0,
-        "near_threshold_mm": 300,
-        "report_delta_mm": 50,
+# Port 7 drives two magnetic door deadbolts. Each bolt remains locked while its
+# output is held HIGH and releases when its output is LOW. Both default LOW.
+OUTPUT_PORTS = {
+    7: {
+        "prop": "door_deadbolts",
+        "signal_a": "door_AB",
+        "signal_b": "door_BC",
+        "initial_a": False,
+        "initial_b": False,
     },
 }
 
-# Single latch-lock controller on port 5, Signal A.
-LATCH_LOCK_PORTS = {
-    5: {
-        "prop": "latch_lock",
-        "signal_a_lock": 1,
+# Clock-face hardware test on port 8 Signal B. Inner LEDs 1-12 and outer LEDs
+# 13-24 both map in order to clock positions 1-12.
+# The MQTT-controlled chase test completes at 0.25 Hz. LEDs remain off at boot.
+NEOPIXEL_CHASE_PORTS = {
+    8: {
+        "prop": "clock_puzzle",
+        "signal": "b",
+        "pixel_count": 24,
+        "step_count": 12,
+        "color": (0, 0, 255),
+        "cycle_hz": 0.25,
     },
 }
