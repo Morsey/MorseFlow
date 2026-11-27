@@ -56,8 +56,9 @@ active-low puzzle switches. Latch commands are safety-capped by firmware.
 
 ## MB-004
 
-MB-004 drives a 12-pixel blue NeoPixel chase from port 1 Signal A. Signal B is
-unused and held low.
+MB-004 drives the clock puzzle's 24 NeoPixels from port 1 Signal B. The initial
+test firmware runs a repeating blue-pixel chase. Signal A is unused and held
+low.
 
 ## MB-007
 

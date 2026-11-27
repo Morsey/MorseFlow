@@ -1,3 +1,5 @@
+__version__ = "1.0.0"
+
 from machine import Pin, SPI
 from time import ticks_add, ticks_diff
 import network

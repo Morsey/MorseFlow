@@ -1,3 +1,5 @@
+__version__ = "1.0.0"
+
 from time import ticks_add, ticks_diff, ticks_ms
 
 from mqtt_client import MQTTClient

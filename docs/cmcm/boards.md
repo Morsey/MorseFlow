@@ -8,7 +8,7 @@ test/upload notes, see `docs/cmcm/board-status-log.md`.
 | `mb-001` | `firmware/morseboard/board_configs/mb_001.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-001` | MQTT-controlled candles on ports 1-2; demon seals RFID readers on ports 3-7. |
 | `mb-002` | `firmware/morseboard/board_configs/mb_002.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-002` | Demon knockers on ports 1-3 and 6-7; cross drop on port 8; ports 4 and 5 are broken. |
 | `mb-003` | `firmware/morseboard/board_configs/mb_003.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-003` | Beasts RFID readers on ports 1-4; latch locks on ports 5-6; pull cord and vampire delay switch on port 7. |
-| `mb-004` | `firmware/morseboard/board_configs/mb_004.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-004` | Twelve-pixel blue NeoPixel chase on port 1 Signal A. |
+| `mb-004` | `firmware/morseboard/board_configs/mb_004.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-004` | Clock puzzle: 24 NeoPixels on port 1 Signal B; blue chase used for initial testing. |
 | `mb-005` | `firmware/morseboard/board_configs/mb_005.py` | TBD | TBD | DHCP | `morseflow/prodigy/cmcm/mb-005` | Reserved. |
 | `mb-006` | `firmware/morseboard/board_configs/mb_006.py` | Special screw-terminal W5500-EVB-Pico/Pico2 | Installed/networked | DHCP | `morseflow/prodigy/cmcm/mb-006` | Bookshelf on GPIO0-GPIO8; AS5600 safe dial on GPIO10/GPIO11. |
 | `mb-007` | `firmware/morseboard/board_configs/mb_007.py` | W5500-EVB-Pico/Pico2 | Bench/dev | DHCP | `morseflow/prodigy/cmcm/mb-007` | DFPlayer audio controlled over MQTT; candles on ports 1-3; BCDoor ToF sensor on port 4; latch lock on port 5; IR changes publish over MQTT. |
@@ -92,10 +92,11 @@ live `switch` event containing the changed input and the status of both inputs.
 
 ### MB-004
 
-Port 1 drives a string of 12 NeoPixels from Signal A. At startup, one blue
-pixel chases from pixel 1 through pixel 12 and repeats. One complete chase
-takes four seconds (0.25 Hz), so the active pixel advances approximately every
-333 ms. Signal B is held low and unused.
+MB-004 is assigned to the clock puzzle. Port 1 drives a string of 24 NeoPixels
+from Signal B. During the initial hardware test, one blue pixel chases from
+pixel 1 through pixel 24 and repeats. One complete chase takes 0.5 seconds
+(2 Hz), so the active pixel advances approximately every 21 ms. Signal A is
+held low and unused.
 
 ### MB-007
 

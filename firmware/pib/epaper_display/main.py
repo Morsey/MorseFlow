@@ -1,3 +1,5 @@
+__version__ = "1.0.0"
+
 from time import sleep_ms, ticks_diff, ticks_ms
 
 import config

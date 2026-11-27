@@ -3,6 +3,14 @@ PROP_5V_ENABLED_AT_BOOT = True
 
 RFID_INPUT_PORTS = {}
 
+# Port 6 Signal A drives latch lock 4.
+LATCH_LOCK_PORTS = {
+    6: {
+        "prop": "latch_lock",
+        "signal_a_lock": 4,
+    },
+}
+
 # Port 7 drives two magnetic door deadbolts. Each bolt remains locked while its
 # output is held HIGH and releases when its output is LOW. Both default LOW.
 OUTPUT_PORTS = {

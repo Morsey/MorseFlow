@@ -1,3 +1,5 @@
+__version__ = "1.0.0"
+
 try:
     import usocket as socket
 except ImportError:
@@ -116,7 +118,7 @@ class HTTPService:
                 image = safe_image_name(query["image"])
                 self.display.queue_show(image)
                 _json(client, b"202 Accepted", {"status": "queued", "image": image})
-            elif query.get("color") in ("white", "black"):
+            elif query.get("color") in ("white", "black", "red"):
                 color = query["color"]
                 self.display.queue_clear(color)
                 _json(client, b"202 Accepted", {"status": "queued", "color": color})
@@ -190,6 +192,7 @@ class HTTPService:
 <button onclick="upload()">Upload .bin</button>
 <button onclick="showColor('white')">White</button>
 <button onclick="showColor('black')">Black</button>
+<button onclick="showColor('red')">Red</button>
 <ul>{items}</ul>
 <pre id="out"></pre>
 <script>

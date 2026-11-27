@@ -1,7 +1,11 @@
 # E-Paper Display PIB
 
-Standalone Pico-class Prop Interface Board for a Waveshare 7.3-inch seven-color
-e-paper display.
+Standalone Pico-class Prop Interface Board for a DKE 7.5-inch 800x480
+black/white/red e-paper panel (`DEPG0750RWF65CF60HP`) connected through a
+Waveshare E-Paper Driver HAT Rev 2.3.
+
+Set `BS` to `0` / GND (4-line SPI) and `RESE` to `B`. Rev 2.3's separate
+active-high `PWR` input is driven by Pico GPIO7.
 
 This PIB is not connected to a Morseboard. It uses its own W5500 Ethernet
 connection for HTTP file management and MQTT display commands.
@@ -11,6 +15,7 @@ connection for HTTP file management and MQTT display commands.
 Upload these files to the Pico filesystem root for the networked runtime:
 
 - `boot.py`
+- `versions.py`
 - `main.py`
 - `app.py`
 - `config.py`
@@ -54,6 +59,7 @@ run `test_network_mqtt.main()` manually from the REPL.
 Upload these files to the Pico filesystem root:
 
 - `boot.py`
+- `versions.py`
 - `main.py`
 - `config.py`
 - `debug.py`
@@ -117,11 +123,12 @@ HTTP API endpoints:
 
 - `GET /status`
 - `GET /images`
-- `PUT /images/<name>.bin` with the raw `192000` byte file body
+- `PUT /images/<name>.bin` with the raw `96000` byte file body
 - `DELETE /images/<name>.bin`
 - `POST /show?image=<name>.bin`
 - `POST /show?color=white`
 - `POST /show?color=black`
+- `POST /show?color=red`
 
 ## MQTT
 
@@ -149,6 +156,8 @@ morseflow/prodigy/cmcm/epaper-001/cmd/clear
 {"color":"white"}
 ```
 
+The clear color may be `white`, `black`, or `red`.
+
 ```text
 morseflow/prodigy/cmcm/epaper-001/cmd/delete
 {"image":"old-image.bin"}
@@ -167,6 +176,9 @@ controllers can see when an image change starts, completes, or fails.
 Upload these files to the Pico filesystem root:
 
 - `config.py`
+- `versions.py`
+- `debug.py`
+- `display_controller.py`
 - `epaper_display.py`
 - `test_display.py`
 - `E ink Non Scare.bin`
@@ -174,29 +186,45 @@ Upload these files to the Pico filesystem root:
 
 From the REPL:
 
+After uploading, reset the Pico to clear cached modules. The display test prints
+the installed and expected versions for its six Python files. For a complete
+inventory, run `import versions` and then `versions.report()` at the REPL.
+
 ```python
 import test_display
 test_display.main()
 ```
 
-The test initializes the panel and displays `E ink Non Scare.bin`. Press Enter
-in the REPL to alternate between the non-scare and scare images. Press Ctrl-C to
-stop and put the display to sleep.
+The test clears the panel to white, displays a black/white/red pattern, displays
+the first uploaded `.bin` image if one is present, and safely puts the panel to
+sleep.
+
+To run this test automatically at normal boot without initializing Ethernet,
+HTTP, or MQTT, set the following in `config.py`:
+
+```python
+DISPLAY_TEST_MODE = True
+```
+
+Set it back to `False` to restore the networked runtime.
 
 ## Default Wiring
 
-These defaults match the previous reference project for the display and use
-SPI0 for the W5500 Ethernet interface.
+These defaults use SPI1 for the display and leave SPI0 for the W5500 Ethernet
+interface. Raspberry Pi BCM numbers in Seengreat documentation do not apply to
+the Pico.
 
-| E-paper function | GPIO |
+| Waveshare signal | Pico connection |
 | --- | --- |
-| SPI bus | SPI1 |
+| VCC | 3V3 |
+| GND | GND |
 | CS | GPIO9 |
-| DC | GPIO8 |
+| D/C | GPIO8 |
 | RST | GPIO12 |
-| BUSY | GPIO13 |
-| SCK | GPIO10 |
-| MOSI | GPIO11 |
+| BUSY | GPIO14 (physical pin 19) |
+| CLK / SCK | GPIO10 (SPI1 SCK) |
+| MOSI / DIN | GPIO11 (SPI1 TX) |
+| PWR | GPIO7 |
 
 | W5500 function | GPIO |
 | --- | --- |
@@ -246,8 +274,9 @@ Convert all supported source images:
 python3 firmware/pib/epaper_display/tools/convert_images.py
 ```
 
-The converter rotates source images by 90 degrees before fitting them to the
-panel's `800x480` buffer. To use a different orientation:
+The converter rotates source images by 90 degrees before fitting and quantizing
+them to black, white, and red. It writes a 48,000-byte black/white plane followed
+by a 48,000-byte red plane. To use a different orientation:
 
 ```bash
 python3 firmware/pib/epaper_display/tools/convert_images.py --rotate 270
@@ -259,9 +288,12 @@ Generated `.bin` files are written to:
 firmware/pib/epaper_display/images/bin/
 ```
 
-Each full-screen `.bin` file should be `192000` bytes.
+Each full-screen `.bin` file should be `96000` bytes.
 
-## Test Log
+## Historical Test Log
+
+The following result applies to the previous 7.3-inch seven-color panel, not
+the current DKE/Seengreat hardware.
 
 ### 2026-08-22 18:00 BST
 

@@ -1,22 +1,18 @@
-import config
-from display_controller import image_path, list_images
-from epaper_display import EPD7in3F
+__version__ = "1.0.0"
 
+from time import sleep_ms
 
-def _read_choice(prompt):
-    try:
-        return input(prompt).strip()
-    except KeyboardInterrupt:
-        raise
-    except Exception:
-        # Some MicroPython REPLs can raise EOF-style errors on disconnect.
-        return ""
-
+import versions
 
 def main():
+    if not versions.report(versions.DISPLAY):
+        return
+    import config
+    from display_controller import image_path, list_images
+    from epaper_display import EPD7in5B, WHITE, stream_test_pattern
     print("E-paper display PIB test")
-    print("SPI{} SCK GPIO{} MOSI GPIO{}".format(
-        config.SPI_BUS,
+    print("{} SPI SCK GPIO{} MOSI GPIO{}".format(
+        "Software" if config.SPI_SOFTWARE else "Hardware SPI{}".format(config.SPI_BUS),
         config.EPD_SCK_PIN,
         config.EPD_MOSI_PIN,
     ))
@@ -26,60 +22,42 @@ def main():
         config.EPD_RST_PIN,
         config.EPD_BUSY_PIN,
     ))
+    print("Waveshare Rev 2.3 PWR GPIO{}".format(config.EPD_PWR_PIN))
+    print("Power will be enabled before display reset")
 
-    epd = EPD7in3F()
-    epd.init()
+    epd = EPD7in5B()
+    initialized = False
 
     try:
-        while True:
-            image = _choose_image()
-            if image is None:
-                continue
+        print("BUSY with HAT power off: {}".format(epd.busy.value()))
+        epd.init()
+        initialized = True
+        print("BUSY after init: {} (expected idle=1)".format(epd.busy.value()))
+        print("Clearing display to white")
+        epd.clear(WHITE)
+        sleep_ms(config.DISPLAY_HOLD_MS)
+
+        print("Displaying black/white/red test pattern")
+        stream_test_pattern(epd)
+        sleep_ms(config.DISPLAY_HOLD_MS)
+
+        images = list_images()
+        if not images:
+            print("No .bin image found; skipping image step")
+        else:
+            image = images[0]["name"]
             print("Displaying image: {}".format(image))
             epd.display_file(image_path(image))
     except KeyboardInterrupt:
         print("")
         print("Stopping display test")
     finally:
-        epd.sleep()
-        print("Display sleeping")
-
-
-def _choose_image():
-    images = list_images()
-    if not images:
-        print("No .bin images found in {} or root.".format(config.IMAGE_DIR))
-        _read_choice("Upload images, then press Enter to rescan. Ctrl-C to stop: ")
-        return None
-
-    print("")
-    print("Available .bin images:")
-    for index, item in enumerate(images, 1):
-        print("{}: {} ({} bytes)".format(index, item["name"], item["size"]))
-
-    choice = _read_choice("Select image number/name, r=rescan, Ctrl-C=stop: ")
-    if choice.lower() in ("", "r", "rescan"):
-        return None
-
-    try:
-        index = int(choice)
-        if 1 <= index <= len(images):
-            return images[index - 1]["name"]
-    except ValueError:
-        pass
-
-    for item in images:
-        if item["name"] == choice:
-            return item["name"]
-
-    if not choice.endswith(".bin"):
-        choice += ".bin"
-    for item in images:
-        if item["name"] == choice:
-            return item["name"]
-
-    print("Unknown image: {}".format(choice))
-    return None
+        if initialized:
+            epd.sleep()
+            print("Display sleeping; PWR GPIO is low")
+        else:
+            epd.power_off()
+            print("Display power off")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Convert source images to Waveshare 7.3-inch seven-color .bin buffers."""
+"""Convert images to DKE 7.5-inch black/white/red two-plane buffers."""
+
+__version__ = "1.0.0"
 
 import argparse
 from pathlib import Path
@@ -9,7 +11,8 @@ from PIL import Image, ImageOps
 
 WIDTH = 800
 HEIGHT = 480
-BUFFER_SIZE = WIDTH * HEIGHT // 2
+PLANE_SIZE = WIDTH * HEIGHT // 8
+BUFFER_SIZE = PLANE_SIZE * 2
 
 SOURCE_DIR = Path(__file__).resolve().parents[1] / "images" / "source"
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "images" / "bin"
@@ -17,25 +20,7 @@ DEFAULT_ROTATION = 90
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"}
 
-COLORS = (
-    (0, 0, 0),        # black
-    (255, 255, 255),  # white
-    (0, 255, 0),      # green
-    (0, 0, 255),      # blue
-    (255, 0, 0),      # red
-    (255, 255, 0),    # yellow
-    (255, 128, 0),    # orange
-)
-
-PALETTE = {
-    (0, 0, 0): 0x0,
-    (255, 255, 255): 0x1,
-    (0, 255, 0): 0x2,
-    (0, 0, 255): 0x3,
-    (255, 0, 0): 0x4,
-    (255, 255, 0): 0x5,
-    (255, 128, 0): 0x6,
-}
+COLORS = ((0, 0, 0), (255, 255, 255), (255, 0, 0))
 
 
 def build_palette_image():
@@ -72,15 +57,18 @@ def pack_image(image):
         raise ValueError("image must be {}x{} pixels".format(WIDTH, HEIGHT))
 
     pixels = image.load()
-    output = bytearray(BUFFER_SIZE)
-    index = 0
+    black = bytearray([0xFF] * PLANE_SIZE)
+    red = bytearray(PLANE_SIZE)
     for y in range(HEIGHT):
-        for x in range(0, WIDTH, 2):
-            left = PALETTE[pixels[x, y]]
-            right = PALETTE[pixels[x + 1, y]]
-            output[index] = (left << 4) | right
-            index += 1
-    return output
+        for x in range(WIDTH):
+            index = y * (WIDTH // 8) + (x // 8)
+            mask = 0x80 >> (x & 7)
+            color = pixels[x, y]
+            if color == (0, 0, 0):
+                black[index] &= ~mask
+            elif color == (255, 0, 0):
+                red[index] |= mask
+    return black + red
 
 
 def convert_image(source_path, output_path, rotation):
@@ -101,7 +89,7 @@ def iter_sources(source_dir):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert epaper source images to packed 800x480 .bin files."
+        description="Convert images to 800x480 black/white/red two-plane .bin files."
     )
     parser.add_argument(
         "sources",

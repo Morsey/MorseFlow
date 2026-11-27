@@ -1,4 +1,7 @@
-# Waveshare 7.3-inch seven-color e-paper test configuration.
+__version__ = "1.0.0"
+
+# DKE/XSRUPB FPC-8612 7.5-inch black/white/red panel on a Waveshare
+# E-Paper Driver HAT Rev 2.3 (BS=0 / 4-line SPI, RESE=B).
 
 DEBUG_REPL = True
 DEBUG_BUFFER_SIZE = 50
@@ -7,20 +10,32 @@ BOOT_LED_TOGGLE_MS = 50
 AUTO_RUN_MODULE = "app"
 AUTO_RUN_FUNCTION = "main"
 
+# Run the local clear/pattern/image/sleep test without starting networking.
+DISPLAY_TEST_MODE = False
+
 SITE = "prodigy"
 ROOM = "cmcm"
 DEVICE_ID = "epaper-001"
 FIRMWARE_NAME = "epaper-display-pib"
 
 SPI_BUS = 1
-SPI_BAUDRATE = 1_000_000
+# Use software SPI while bringing up the Waveshare Rev 2.3/DKE combination.
+# This keeps the same CLK and DIN pins but removes hardware-SPI configuration
+# as a possible cause of commands not reaching the controller.
+SPI_SOFTWARE = True
+SPI_BAUDRATE = 500_000
+SPI_POLARITY = 0
+SPI_PHASE = 0
 
 EPD_CS_PIN = 9
 EPD_DC_PIN = 8
 EPD_RST_PIN = 12
-EPD_BUSY_PIN = 13
+EPD_BUSY_PIN = 14
 EPD_SCK_PIN = 10
 EPD_MOSI_PIN = 11
+# Rev 2.3 has a dedicated active-high power-control input.
+EPD_PWR_PIN = 7
+EPD_POWER_SETTLE_MS = 100
 
 EPD_WIDTH = 800
 EPD_HEIGHT = 480

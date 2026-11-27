@@ -1,3 +1,5 @@
+__version__ = "1.0.0"
+
 from time import sleep_ms, ticks_add, ticks_diff, ticks_ms
 
 try:
@@ -12,6 +14,8 @@ from mqtt_client import MQTTClient
 
 
 def main():
+    import versions
+    versions.report(versions.NETWORK)
     log("test", "starting epaper network/MQTT test")
     ethernet = EthernetService()
     while not ethernet.is_ready():

@@ -1,16 +1,28 @@
+__version__ = "1.0.0"
+
 from machine import idle
 from time import ticks_add, ticks_diff, ticks_ms
 import gc
 
 import config
 from debug import log
-from display_controller import DisplayController
-from ethernet import EthernetService
-from http_service import HTTPService
-from mqtt_service import MQTTService
 
 
 def main():
+    if config.DISPLAY_TEST_MODE:
+        log("app", "display test mode; networking disabled")
+        from test_display import main as run_display_test
+        run_display_test()
+        return
+
+    # Keep network-only modules out of the test-mode import path.
+    import versions
+    versions.report(versions.RUNTIME)
+    from display_controller import DisplayController
+    from ethernet import EthernetService
+    from http_service import HTTPService
+    from mqtt_service import MQTTService
+
     log("app", "starting epaper display PIB")
     display = DisplayController()
     ethernet = EthernetService()

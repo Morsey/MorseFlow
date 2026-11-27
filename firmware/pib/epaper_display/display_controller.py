@@ -1,14 +1,16 @@
+__version__ = "1.0.0"
+
 import gc
 import os
 
 import config
 from debug import log
-from epaper_display import BLACK, BUFFER_SIZE, EPD7in3F, WHITE
+from epaper_display import BLACK, BUFFER_SIZE, EPD7in5B, RED, WHITE
 
 
 class DisplayController:
     def __init__(self):
-        self.epd = EPD7in3F()
+        self.epd = EPD7in5B()
         self.current_image = None
         self.current_color = None
         self.busy = False
@@ -30,7 +32,7 @@ class DisplayController:
 
     def queue_clear(self, color_name="white"):
         color_name = color_name.lower()
-        if color_name not in ("white", "black"):
+        if color_name not in ("white", "black", "red"):
             raise ValueError("unsupported clear color")
         self.pending = ("color", color_name)
         self.last_message = "queued {}".format(color_name)
@@ -57,7 +59,7 @@ class DisplayController:
                 self.last_message = "displayed {}".format(value)
                 self._emit("display", {"status": "complete", "image": value}, on_event)
             elif action == "color":
-                color = WHITE if value == "white" else BLACK
+                color = {"white": WHITE, "black": BLACK, "red": RED}[value]
                 self.last_message = "displaying {}".format(value)
                 log("display", self.last_message)
                 self._emit("display", {"status": "started", "color": value}, on_event)
